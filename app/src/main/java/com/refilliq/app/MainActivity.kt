@@ -13,7 +13,17 @@ import androidx.compose.ui.Modifier
 import com.refilliq.app.ui.theme.RefillIQTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
-
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,10 +47,72 @@ class MainActivity : ComponentActivity() {
 fun Greeting(
     modifier: Modifier = Modifier
 ) {
-    Scaffold {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        var medicationName by remember { mutableStateOf("") }
+
+        Text(text = "Add Medication")
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+
+        OutlinedTextField(
+            value = medicationName,
+            onValueChange = { medicationName = it },
+            label = { Text("Medication Name") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        var strength by remember { mutableStateOf("") }
+        var quantity by remember { mutableStateOf("") }
+        var dailyUsage by remember { mutableStateOf("") }
+        var savedMessage by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = strength,
+            onValueChange = { strength = it },
+            label = { Text("Strength") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = quantity,
+            onValueChange = { quantity = it },
+            label = { Text("Quantity") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = dailyUsage,
+            onValueChange = { dailyUsage = it },
+            label = { Text("Daily Usage") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                savedMessage =
+                    "Medication: $medicationName\n" +
+                            "Strength: $strength\n" +
+                            "Quantity: $quantity\n" +
+                            "Daily Usage: $dailyUsage"
+                medicationName = ""
+                strength = ""
+                quantity = ""
+                dailyUsage = ""
+            }
+        ) {
+            Text("Save")
+        }
         Text(
-            text = "REFILLIQ FUNCIONA",
-            modifier = Modifier.padding(50.dp)
+            text = savedMessage
         )
     }
 }
