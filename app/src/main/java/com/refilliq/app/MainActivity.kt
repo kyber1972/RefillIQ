@@ -23,11 +23,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.refilliq.app.ui.theme.RefillIQTheme
+import androidx.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val database = Room.databaseBuilder(
+            applicationContext,
+            RefillIQDatabase::class.java,
+            "refilliq_database"
+        ).build()
+
+        val repository = MedicationRepository(
+            database.medicationDao()
+        )
 
         setContent {
             RefillIQTheme {
@@ -35,6 +48,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
                     Greeting(
+                        repository = repository,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -45,6 +59,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Greeting(
+    repository: MedicationRepository,
     modifier: Modifier = Modifier
 ) {
     var medicationName by remember { mutableStateOf("") }
