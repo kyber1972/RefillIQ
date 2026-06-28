@@ -68,7 +68,8 @@ fun Greeting(
     var dailyUsage by remember { mutableStateOf("") }
     var savedMessage by remember { mutableStateOf("") }
     var medicationList by remember { mutableStateOf("") }
-
+    val scope = remember { CoroutineScope(Dispatchers.IO) }
+    val repositoryRef = repository
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -118,6 +119,16 @@ fun Greeting(
 
         Button(
             onClick = {
+                val medication = Medication(
+                    name = medicationName,
+                    strength = strength,
+                    quantity = quantity,
+                    dailyUsage = dailyUsage
+                )
+
+                scope.launch {
+                    repositoryRef.insertMedication(medication)
+                }
                 savedMessage =
                     "Medication: $medicationName\n" +
                             "Strength: $strength\n" +
