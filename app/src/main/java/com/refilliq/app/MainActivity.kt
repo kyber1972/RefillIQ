@@ -27,7 +27,7 @@ import androidx.room.Room
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
+import androidx.compose.runtime.LaunchedEffect
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,13 +70,25 @@ fun Greeting(
     var medicationList by remember { mutableStateOf("") }
     val scope = remember { CoroutineScope(Dispatchers.IO) }
     val repositoryRef = repository
+    var medications by remember {
+        mutableStateOf(listOf<Medication>())
+    }
+
+    var isLoaded by remember {
+        mutableStateOf(false)
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-
+        if (!isLoaded) {
+            LaunchedEffect(Unit) {
+                medications = repositoryRef.getAllMedications()
+                isLoaded = true
+            }
+        }
         Text(text = "Add Medication")
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -128,6 +140,7 @@ fun Greeting(
 
                 scope.launch {
                     repositoryRef.insertMedication(medication)
+                    medications = repositoryRef.getAllMedications()
                 }
                 savedMessage =
                     "Medication: $medicationName\n" +
