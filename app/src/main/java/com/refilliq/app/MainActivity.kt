@@ -28,6 +28,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,7 +94,10 @@ fun Greeting(
                 isLoaded = true
             }
         }
-        Text(text = "Add Medication")
+        Text(
+            text = "Add Medication",
+            style = MaterialTheme.typography.headlineSmall
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -156,7 +164,8 @@ fun Greeting(
                 strength = ""
                 quantity = ""
                 dailyUsage = ""
-            }
+            },
+                    modifier = Modifier.fillMaxWidth()
         ) {
             Text("Save")
         }
@@ -172,5 +181,21 @@ fun Greeting(
         Text(
             text = medicationList
         )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text("Saved in Room:")
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn {
+
+            items(medications) { medication ->
+
+                MedicationCard(
+                    medication = medication
+                )
+
+            }
+        }
     }
 }
