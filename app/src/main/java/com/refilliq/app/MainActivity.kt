@@ -187,15 +187,8 @@ fun Greeting(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        LazyColumn {
-
-            items(medications) { medication ->
-
-                MedicationCard(
-                    medication = medication
-                )
-
-            }
-        }
+        MedicationList(
+            medications = medications
+        )
     }
 }
