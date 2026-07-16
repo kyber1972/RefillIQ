@@ -94,10 +94,7 @@ fun Greeting(
                 isLoaded = true
             }
         }
-        Text(
-            text = "Add Medication",
-            style = MaterialTheme.typography.headlineSmall
-        )
+        MedicationForm()
 
         Spacer(modifier = Modifier.height(16.dp))
 
