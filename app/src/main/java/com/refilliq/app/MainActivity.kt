@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        //enableEdgeToEdge()
         val database = Room.databaseBuilder(
             applicationContext,
             RefillIQDatabase::class.java,
@@ -41,123 +41,116 @@ class MainActivity : ComponentActivity() {
         val repository = MedicationRepository(
             database.medicationDao()
         )
-
+        android.util.Log.d("RefillIQ", "ANTES DE setContent")
         setContent {
-            RefillIQTheme {
-                Scaffold(
-                    modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
-                    Greeting(
-                        repository = repository,
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+            android.util.Log.d("RefillIQ", "DENTRO DE setContent")
+
+            androidx.compose.material3.Text("REFILLIQ FUNCIONA")
         }
-    }
-}
 
-@Composable
-fun Greeting(
-    repository: MedicationRepository,
-    modifier: Modifier = Modifier
-) {
-    var medicationName by remember { mutableStateOf("") }
-    var strength by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
-    var dailyUsage by remember { mutableStateOf("") }
-    var savedMessage by remember { mutableStateOf("") }
-    var medicationList by remember { mutableStateOf("") }
-    val scope = remember { CoroutineScope(Dispatchers.IO) }
-    val repositoryRef = repository
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
+        @Composable
+        fun Greeting(
+            repository: MedicationRepository,
+            modifier: Modifier = Modifier
+        ) {
+            var medicationName by remember { mutableStateOf("") }
+            var strength by remember { mutableStateOf("") }
+            var quantity by remember { mutableStateOf("") }
+            var dailyUsage by remember { mutableStateOf("") }
+            var savedMessage by remember { mutableStateOf("") }
+            var medicationList by remember { mutableStateOf("") }
+            val scope = remember { CoroutineScope(Dispatchers.IO) }
+            val repositoryRef = repository
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
 
-        Text(text = "Add Medication")
+                Text(text = "Add Medication")
 
-        Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = medicationName,
-            onValueChange = { medicationName = it },
-            label = { Text("Medication Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = strength,
-            onValueChange = { strength = it },
-            label = { Text("Strength") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = quantity,
-            onValueChange = { quantity = it },
-            label = { Text("Quantity") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = dailyUsage,
-            onValueChange = { dailyUsage = it },
-            label = { Text("Daily Usage") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(
-            onClick = {
-                val medication = Medication(
-                    name = medicationName,
-                    strength = strength,
-                    quantity = quantity,
-                    dailyUsage = dailyUsage
+                OutlinedTextField(
+                    value = medicationName,
+                    onValueChange = { medicationName = it },
+                    label = { Text("Medication Name") },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                scope.launch {
-                    repositoryRef.insertMedication(medication)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = strength,
+                    onValueChange = { strength = it },
+                    label = { Text("Strength") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    label = { Text("Quantity") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = dailyUsage,
+                    onValueChange = { dailyUsage = it },
+                    label = { Text("Daily Usage") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        val medication = Medication(
+                            name = medicationName,
+                            strength = strength,
+                            quantity = quantity,
+                            dailyUsage = dailyUsage
+                        )
+
+                        scope.launch {
+                            repositoryRef.insertMedication(medication)
+                        }
+                        savedMessage =
+                            "Medication: $medicationName\n" +
+                                    "Strength: $strength\n" +
+                                    "Quantity: $quantity\n" +
+                                    "Daily Usage: $dailyUsage"
+
+                        medicationList +=
+                            "\n\nMedication: $medicationName\n" +
+                                    "Strength: $strength"
+
+                        medicationName = ""
+                        strength = ""
+                        quantity = ""
+                        dailyUsage = ""
+                    }
+                ) {
+                    Text("Save")
                 }
-                savedMessage =
-                    "Medication: $medicationName\n" +
-                            "Strength: $strength\n" +
-                            "Quantity: $quantity\n" +
-                            "Daily Usage: $dailyUsage"
 
-                medicationList +=
-                    "\n\nMedication: $medicationName\n" +
-                            "Strength: $strength"
+                Spacer(modifier = Modifier.height(16.dp))
 
-                medicationName = ""
-                strength = ""
-                quantity = ""
-                dailyUsage = ""
+                Text(
+                    text = savedMessage
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = medicationList
+                )
             }
-        ) {
-            Text("Save")
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = savedMessage
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = medicationList
-        )
     }
 }
