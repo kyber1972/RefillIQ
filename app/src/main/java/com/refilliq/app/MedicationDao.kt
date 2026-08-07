@@ -3,6 +3,7 @@ package com.refilliq.app
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MedicationDao {
@@ -11,5 +12,5 @@ interface MedicationDao {
     suspend fun insertMedication(medication: Medication)
 
     @Query("SELECT * FROM medications")
-    suspend fun getAllMedications(): List<Medication>
+    fun getAllMedications(): Flow<List<Medication>>
 }

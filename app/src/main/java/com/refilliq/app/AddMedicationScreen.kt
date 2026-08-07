@@ -17,9 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun AddMedicationScreen(
@@ -33,9 +35,18 @@ fun AddMedicationScreen(
     var dailyUsage by remember { mutableStateOf("") }
 
     var savedMessage by remember { mutableStateOf("") }
-    var medicationList by remember { mutableStateOf("") }
+    var medications by remember {
+        mutableStateOf<List<Medication>>(emptyList())
+    }
 
-    val scope = remember { CoroutineScope(Dispatchers.IO) }
+    val scope = rememberCoroutineScope()
+   LaunchedEffect(Unit) {
+       repository
+            .getAllMedications()
+           .collectLatest {
+                medications = it
+            }
+    }
 
     Column(
         modifier = modifier
@@ -104,9 +115,6 @@ fun AddMedicationScreen(
                             "Quantity: $quantity\n" +
                             "Daily Usage: $dailyUsage"
 
-                medicationList +=
-                    "\n\nMedication: $medicationName\n" +
-                            "Strength: $strength"
 
                 medicationName = ""
                 strength = ""
@@ -124,7 +132,7 @@ fun AddMedicationScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = medicationList)
+        Text(text = "Total medications: ${medications.size}")
 
     }
 }
