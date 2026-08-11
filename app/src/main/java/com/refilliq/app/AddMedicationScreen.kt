@@ -21,6 +21,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
 
 @Composable
 fun AddMedicationScreen(
@@ -131,7 +134,43 @@ fun AddMedicationScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Total medications: ${medications.size}")
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            items(medications) { medication ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+
+                        Text(
+                            text = medication.name
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Strength: ${medication.strength}"
+                        )
+
+                        Text(
+                            text = "Quantity: ${medication.quantity}"
+                        )
+
+                        Text(
+                            text = "Daily Usage: ${medication.dailyUsage}"
+                        )
+                    }
+                }
+            }
+        }
 
     }
 }
