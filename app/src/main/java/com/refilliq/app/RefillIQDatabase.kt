@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [Medication::class],
-    version = 1
+    version = 2
 )
 abstract class RefillIQDatabase : RoomDatabase() {
 

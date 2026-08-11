@@ -15,5 +15,11 @@ data class Medication(
 
     val quantity: String,
 
-    val dailyUsage: String
+    val dailyUsage: String,
+
+    val status: String = "ACTIVE",
+
+    val suspensionReason: String = "",
+
+    val suspendedAt: Long? = null
 )
