@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Surface
 
 @Composable
 fun AddMedicationScreen(
@@ -169,12 +171,6 @@ fun AddMedicationScreen(
                         daysRemaining <= 14 -> "Running low"
                         else -> "In stock"
                     }
-                val inventoryColor =
-                    when (inventoryStatus) {
-                        "Almost empty" -> Color.Red
-                        "Running low" -> Color(0xFFFFA000)
-                        else -> Color(0xFF2E7D32)
-                    }
 
                 Card(
                     modifier = Modifier
@@ -237,14 +233,39 @@ fun AddMedicationScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        Text(
-                            text = inventoryStatus,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = inventoryColor
+                        InventoryStatusBadge(
+                            status = inventoryStatus
                         )
                     }
                 }
             }
         }
+    }
+}
+@Composable
+fun InventoryStatusBadge(
+    status: String
+) {
+
+    val statusColor =
+        when (status) {
+            "Almost empty" -> Color.Red
+            "Running low" -> Color(0xFFFFA000)
+            else -> Color(0xFF2E7D32)
+        }
+
+    Surface(
+        color = statusColor.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(
+            text = status,
+            color = statusColor,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(
+                horizontal = 12.dp,
+                vertical = 6.dp
+            )
+        )
     }
 }
