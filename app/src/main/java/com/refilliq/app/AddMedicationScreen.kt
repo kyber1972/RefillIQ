@@ -21,6 +21,10 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.flow.collectLatest
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 
 @Composable
 fun AddMedicationScreen(
@@ -54,7 +58,10 @@ fun AddMedicationScreen(
         verticalArrangement = Arrangement.Center
     ) {
 
-        Text(text = "Add Medication")
+        Text(
+            text = "Add Medication",
+            style = MaterialTheme.typography.headlineSmall
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -129,9 +136,52 @@ fun AddMedicationScreen(
 
         Text(text = savedMessage)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Text(text = "Total medications: ${medications.size}")
+        Text(
+            text = "Medications",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            items(medications) { medication ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+
+                        Text(
+                            text = medication.name
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Strength: ${medication.strength}"
+                        )
+
+                        Text(
+                            text = "Quantity: ${medication.quantity}"
+                        )
+
+                        Text(
+                            text = "Daily Usage: ${medication.dailyUsage}"
+                        )
+                    }
+                }
+            }
+        }
 
     }
 }
