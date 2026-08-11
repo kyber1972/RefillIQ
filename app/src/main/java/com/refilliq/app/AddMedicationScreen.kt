@@ -162,6 +162,12 @@ fun AddMedicationScreen(
                     } else {
                         0
                     }
+                val inventoryStatus =
+                    when {
+                        daysRemaining <= 7 -> "Almost empty"
+                        daysRemaining <= 14 -> "Running low"
+                        else -> "In stock"
+                    }
 
                 Card(
                     modifier = Modifier
@@ -220,6 +226,12 @@ fun AddMedicationScreen(
 
                         Text(
                             text = "$daysRemaining days remaining",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = inventoryStatus,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
