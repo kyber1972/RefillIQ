@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Row
 
 @Composable
 fun AddMedicationScreen(
@@ -162,22 +163,48 @@ fun AddMedicationScreen(
                     ) {
 
                         Text(
-                            text = medication.name
+                            text = medication.name,
+                            style = MaterialTheme.typography.titleMedium
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Strength: ${medication.strength}"
-                        )
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Quantity: ${medication.quantity}"
+                            text = medication.strength,
+                            style = MaterialTheme.typography.bodyMedium
                         )
 
-                        Text(
-                            text = "Daily Usage: ${medication.dailyUsage}"
-                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+
+                            Column {
+                                Text(
+                                    text = "Quantity",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+
+                                Text(
+                                    text = medication.quantity,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+
+                            Column {
+                                Text(
+                                    text = "Daily usage",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+
+                                Text(
+                                    text = "${medication.dailyUsage} / day",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
                     }
                 }
             }
