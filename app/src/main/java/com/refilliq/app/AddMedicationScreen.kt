@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun AddMedicationScreen(
@@ -168,6 +169,12 @@ fun AddMedicationScreen(
                         daysRemaining <= 14 -> "Running low"
                         else -> "In stock"
                     }
+                val inventoryColor =
+                    when (inventoryStatus) {
+                        "Almost empty" -> Color.Red
+                        "Running low" -> Color(0xFFFFA000)
+                        else -> Color(0xFF2E7D32)
+                    }
 
                 Card(
                     modifier = Modifier
@@ -232,7 +239,8 @@ fun AddMedicationScreen(
 
                         Text(
                             text = inventoryStatus,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = inventoryColor
                         )
                     }
                 }
