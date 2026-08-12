@@ -14,26 +14,44 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 val MIGRATION_1_2 = object : Migration(1, 2) {
 
     override fun migrate(
-        database: SupportSQLiteDatabase
+        db: SupportSQLiteDatabase
     ) {
-        database.execSQL(
+        db.execSQL(
             """
             ALTER TABLE medications
             ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'
             """.trimIndent()
         )
 
-        database.execSQL(
+        db.execSQL(
             """
             ALTER TABLE medications
             ADD COLUMN suspensionReason TEXT NOT NULL DEFAULT ''
             """.trimIndent()
         )
 
-        database.execSQL(
+        db.execSQL(
             """
             ALTER TABLE medications
             ADD COLUMN suspendedAt INTEGER
+            """.trimIndent()
+        )
+    }
+}
+val MIGRATION_2_3 = object : Migration(2, 3) {
+
+    override fun migrate(
+        db: SupportSQLiteDatabase
+    ) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS suspension_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                medicationId INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                suspendedAt INTEGER NOT NULL,
+                resumedAt INTEGER
+            )
             """.trimIndent()
         )
     }
@@ -49,11 +67,15 @@ class MainActivity : ComponentActivity() {
             RefillIQDatabase::class.java,
             "refilliq_database"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3
+            )
             .build()
 
         val repository = MedicationRepository(
-            database.medicationDao()
+            database.medicationDao(),
+            database.suspensionHistoryDao()
         )
 
         setContent {

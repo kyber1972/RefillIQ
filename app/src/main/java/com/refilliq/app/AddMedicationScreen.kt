@@ -1,6 +1,7 @@
 package com.refilliq.app
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,11 +11,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,12 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 
 @Composable
 fun AddMedicationScreen(
@@ -156,6 +160,10 @@ fun AddMedicationScreen(
         ) {
             items(medications) { medication ->
 
+                var menuExpanded by remember {
+                    mutableStateOf(false)
+                }
+
                 val quantity = medication.quantity.toIntOrNull() ?: 0
                 val dailyUsage = medication.dailyUsage.toIntOrNull() ?: 0
 
@@ -165,6 +173,7 @@ fun AddMedicationScreen(
                     } else {
                         0
                     }
+
                 val inventoryStatus =
                     when {
                         daysRemaining <= 7 -> "Almost empty"
@@ -177,14 +186,67 @@ fun AddMedicationScreen(
                         .fillMaxWidth()
                         .padding(vertical = 6.dp)
                 ) {
+
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
 
-                        Text(
-                            text = medication.name,
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+
+                            Text(
+                                text = medication.name,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            Box {
+
+                                TextButton(
+                                    onClick = {
+                                        menuExpanded = true
+                                    }
+                                ) {
+                                    Text("⋮")
+                                }
+
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = {
+                                        menuExpanded = false
+                                    }
+                                ) {
+
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text("Edit medication")
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                        }
+                                    )
+
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text("Suspend medication")
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                        }
+                                    )
+
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text("Delete medication")
+                                        },
+                                        onClick = {
+                                            menuExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(4.dp))
 
@@ -231,6 +293,7 @@ fun AddMedicationScreen(
                             text = "$daysRemaining days remaining",
                             style = MaterialTheme.typography.bodyMedium
                         )
+
                         Spacer(modifier = Modifier.height(4.dp))
 
                         InventoryStatusBadge(
@@ -242,6 +305,7 @@ fun AddMedicationScreen(
         }
     }
 }
+
 @Composable
 fun InventoryStatusBadge(
     status: String
