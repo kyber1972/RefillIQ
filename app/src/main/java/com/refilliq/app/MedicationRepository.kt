@@ -17,6 +17,18 @@ class MedicationRepository(
         return medicationDao.getAllMedications()
     }
 
+    suspend fun suspendMedication(
+        medicationId: Int,
+        reason: String,
+        suspendedAt: Long
+    ) {
+        medicationDao.suspendMedicationWithHistory(
+            medicationId = medicationId,
+            reason = reason,
+            suspendedAt = suspendedAt
+        )
+    }
+
     suspend fun insertSuspension(
         suspension: SuspensionHistory
     ) {

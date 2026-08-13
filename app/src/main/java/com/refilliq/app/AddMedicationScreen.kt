@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -46,6 +47,11 @@ fun AddMedicationScreen(
     var dailyUsage by remember { mutableStateOf("") }
 
     var savedMessage by remember { mutableStateOf("") }
+
+    var showSuspendDialog by remember { mutableStateOf(false) }
+    var suspensionReason by remember { mutableStateOf("") }
+    var suspensionError by remember { mutableStateOf("") }
+    var selectedMedication by remember { mutableStateOf<Medication?>(null) }
 
     var medications by remember {
         mutableStateOf<List<Medication>>(emptyList())
@@ -164,6 +170,8 @@ fun AddMedicationScreen(
                     mutableStateOf(false)
                 }
 
+                val isSuspended = medication.status == "SUSPENDED"
+
                 val quantity = medication.quantity.toIntOrNull() ?: 0
                 val dailyUsage = medication.dailyUsage.toIntOrNull() ?: 0
 
@@ -233,6 +241,10 @@ fun AddMedicationScreen(
                                         },
                                         onClick = {
                                             menuExpanded = false
+                                            selectedMedication = medication
+                                            suspensionReason = ""
+                                            suspensionError = ""
+                                            showSuspendDialog = true
                                         }
                                     )
 
@@ -287,21 +299,135 @@ fun AddMedicationScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        if (isSuspended) {
 
-                        Text(
-                            text = "$daysRemaining days remaining",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                            InventoryStatusBadge(
+                                status = "Suspended"
+                            )
 
-                        InventoryStatusBadge(
-                            status = inventoryStatus
-                        )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = "Reason:",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+
+                            Text(
+                                text = medication.suspensionReason,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                        } else {
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "$daysRemaining days remaining",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            InventoryStatusBadge(
+                                status = inventoryStatus
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        if (showSuspendDialog) {
+
+            AlertDialog(
+                onDismissRequest = {
+                    showSuspendDialog = false
+                },
+                title = {
+                    Text("Suspend medication")
+                },
+                text = {
+
+                    Column {
+
+                        Text(
+                            text = "Why is this medication being suspended?"
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(12.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = suspensionReason,
+                            onValueChange = {
+                                suspensionReason = it
+
+                                if (suspensionError.isNotEmpty()) {
+                                    suspensionError = ""
+                                }
+                            },
+                            label = {
+                                Text("Reason")
+                            },
+                            isError = suspensionError.isNotEmpty(),
+                            supportingText = {
+                                if (suspensionError.isNotEmpty()) {
+                                    Text(suspensionError)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            val reason = suspensionReason.trim()
+
+                            if (reason.isBlank()) {
+
+                                suspensionError = "Please enter a reason."
+
+                            } else {
+
+                                selectedMedication?.let { medication ->
+
+                                    scope.launch {
+
+                                        repository.suspendMedication(
+                                            medicationId = medication.id,
+                                            reason = reason,
+                                            suspendedAt = System.currentTimeMillis()
+                                        )
+
+                                        showSuspendDialog = false
+                                        suspensionReason = ""
+                                        suspensionError = ""
+                                        selectedMedication = null
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Suspend")
+                    }
+                },
+                dismissButton = {
+
+                    TextButton(
+                        onClick = {
+                            showSuspendDialog = false
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -314,6 +440,7 @@ fun InventoryStatusBadge(
     val statusColor =
         when (status) {
             "Almost empty" -> Color.Red
+            "Suspended" -> Color.Red
             "Running low" -> Color(0xFFFFA000)
             else -> Color(0xFF2E7D32)
         }
