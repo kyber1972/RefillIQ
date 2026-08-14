@@ -29,6 +29,18 @@ class MedicationRepository(
         )
     }
 
+    suspend fun resumeMedication(
+        medicationId: Int,
+        suspensionId: Int,
+        resumedAt: Long
+    ) {
+        medicationDao.resumeMedicationWithHistory(
+            medicationId = medicationId,
+            suspensionId = suspensionId,
+            resumedAt = resumedAt
+        )
+    }
+
     suspend fun insertSuspension(
         suspension: SuspensionHistory
     ) {

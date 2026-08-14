@@ -22,4 +22,16 @@ interface SuspensionHistoryDao {
     suspend fun getSuspensionHistory(
         medicationId: Int
     ): List<SuspensionHistory>
+
+    @Query(
+        """
+        UPDATE suspension_history
+        SET resumedAt = :resumedAt
+        WHERE id = :suspensionId
+        """
+    )
+    suspend fun resumeSuspension(
+        suspensionId: Int,
+        resumedAt: Long
+    )
 }

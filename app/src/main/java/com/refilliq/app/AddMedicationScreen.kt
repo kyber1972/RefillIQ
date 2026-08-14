@@ -49,9 +49,18 @@ fun AddMedicationScreen(
     var savedMessage by remember { mutableStateOf("") }
 
     var showSuspendDialog by remember { mutableStateOf(false) }
+    var showResumeDialog by remember { mutableStateOf(false) }
+
     var suspensionReason by remember { mutableStateOf("") }
     var suspensionError by remember { mutableStateOf("") }
-    var selectedMedication by remember { mutableStateOf<Medication?>(null) }
+
+    var selectedMedication by remember {
+        mutableStateOf<Medication?>(null)
+    }
+
+    var selectedSuspensionId by remember {
+        mutableStateOf<Int?>(null)
+    }
 
     var medications by remember {
         mutableStateOf<List<Medication>>(emptyList())
@@ -170,10 +179,14 @@ fun AddMedicationScreen(
                     mutableStateOf(false)
                 }
 
-                val isSuspended = medication.status == "SUSPENDED"
+                val isSuspended =
+                    medication.status == "SUSPENDED"
 
-                val quantity = medication.quantity.toIntOrNull() ?: 0
-                val dailyUsage = medication.dailyUsage.toIntOrNull() ?: 0
+                val quantity =
+                    medication.quantity.toIntOrNull() ?: 0
+
+                val dailyUsage =
+                    medication.dailyUsage.toIntOrNull() ?: 0
 
                 val daysRemaining =
                     if (dailyUsage > 0) {
@@ -235,18 +248,59 @@ fun AddMedicationScreen(
                                         }
                                     )
 
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text("Suspend medication")
-                                        },
-                                        onClick = {
-                                            menuExpanded = false
-                                            selectedMedication = medication
-                                            suspensionReason = ""
-                                            suspensionError = ""
-                                            showSuspendDialog = true
-                                        }
-                                    )
+                                    if (isSuspended) {
+
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text("Resume medication")
+                                            },
+                                            onClick = {
+
+                                                menuExpanded = false
+
+                                                selectedMedication = medication
+                                                selectedSuspensionId = null
+
+                                                scope.launch {
+
+                                                    val history =
+                                                        repository.getSuspensionHistory(
+                                                            medication.id
+                                                        )
+
+                                                    val activeSuspension =
+                                                        history.firstOrNull {
+                                                            it.resumedAt == null
+                                                        }
+
+                                                    if (activeSuspension != null) {
+
+                                                        selectedSuspensionId =
+                                                            activeSuspension.id
+
+                                                        showResumeDialog = true
+                                                    }
+                                                }
+                                            }
+                                        )
+
+                                    } else {
+
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text("Suspend medication")
+                                            },
+                                            onClick = {
+
+                                                menuExpanded = false
+
+                                                selectedMedication = medication
+                                                suspensionReason = ""
+                                                suspensionError = ""
+                                                showSuspendDialog = true
+                                            }
+                                        )
+                                    }
 
                                     DropdownMenuItem(
                                         text = {
@@ -275,6 +329,7 @@ fun AddMedicationScreen(
                         ) {
 
                             Column {
+
                                 Text(
                                     text = "Quantity",
                                     style = MaterialTheme.typography.labelMedium
@@ -287,6 +342,7 @@ fun AddMedicationScreen(
                             }
 
                             Column {
+
                                 Text(
                                     text = "Daily usage",
                                     style = MaterialTheme.typography.labelMedium
@@ -363,6 +419,7 @@ fun AddMedicationScreen(
                         OutlinedTextField(
                             value = suspensionReason,
                             onValueChange = {
+
                                 suspensionReason = it
 
                                 if (suspensionError.isNotEmpty()) {
@@ -374,6 +431,7 @@ fun AddMedicationScreen(
                             },
                             isError = suspensionError.isNotEmpty(),
                             supportingText = {
+
                                 if (suspensionError.isNotEmpty()) {
                                     Text(suspensionError)
                                 }
@@ -387,11 +445,13 @@ fun AddMedicationScreen(
                     TextButton(
                         onClick = {
 
-                            val reason = suspensionReason.trim()
+                            val reason =
+                                suspensionReason.trim()
 
                             if (reason.isBlank()) {
 
-                                suspensionError = "Please enter a reason."
+                                suspensionError =
+                                    "Please enter a reason."
 
                             } else {
 
@@ -402,7 +462,8 @@ fun AddMedicationScreen(
                                         repository.suspendMedication(
                                             medicationId = medication.id,
                                             reason = reason,
-                                            suspendedAt = System.currentTimeMillis()
+                                            suspendedAt =
+                                                System.currentTimeMillis()
                                         )
 
                                         showSuspendDialog = false
@@ -422,6 +483,74 @@ fun AddMedicationScreen(
                     TextButton(
                         onClick = {
                             showSuspendDialog = false
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showResumeDialog) {
+
+            AlertDialog(
+                onDismissRequest = {
+                    showResumeDialog = false
+                    selectedSuspensionId = null
+                    selectedMedication = null
+                },
+                title = {
+                    Text("Resume medication")
+                },
+                text = {
+
+                    Text(
+                        text = "Resume ${selectedMedication?.name ?: "this medication"}?"
+                    )
+                },
+                confirmButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            val medication =
+                                selectedMedication
+
+                            val suspensionId =
+                                selectedSuspensionId
+
+                            if (
+                                medication != null &&
+                                suspensionId != null
+                            ) {
+
+                                scope.launch {
+
+                                    repository.resumeMedication(
+                                        medicationId = medication.id,
+                                        suspensionId = suspensionId,
+                                        resumedAt =
+                                            System.currentTimeMillis()
+                                    )
+
+                                    showResumeDialog = false
+                                    selectedSuspensionId = null
+                                    selectedMedication = null
+                                }
+                            }
+                        }
+                    ) {
+                        Text("Resume")
+                    }
+                },
+                dismissButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            showResumeDialog = false
+                            selectedSuspensionId = null
+                            selectedMedication = null
                         }
                     ) {
                         Text("Cancel")
@@ -449,6 +578,7 @@ fun InventoryStatusBadge(
         color = statusColor.copy(alpha = 0.12f),
         shape = RoundedCornerShape(50)
     ) {
+
         Text(
             text = status,
             color = statusColor,

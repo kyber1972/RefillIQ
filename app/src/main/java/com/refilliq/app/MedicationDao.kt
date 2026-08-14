@@ -32,9 +32,34 @@ interface MedicationDao {
         suspendedAt: Long
     )
 
+    @Query(
+        """
+        UPDATE medications
+        SET status = 'ACTIVE',
+            suspensionReason = '',
+            suspendedAt = NULL
+        WHERE id = :medicationId
+        """
+    )
+    suspend fun resumeMedication(
+        medicationId: Int
+    )
+
     @Insert
     suspend fun insertSuspensionHistory(
         suspensionHistory: SuspensionHistory
+    )
+
+    @Query(
+        """
+        UPDATE suspension_history
+        SET resumedAt = :resumedAt
+        WHERE id = :suspensionId
+        """
+    )
+    suspend fun resumeSuspensionHistory(
+        suspensionId: Int,
+        resumedAt: Long
     )
 
     @Transaction
@@ -56,6 +81,23 @@ interface MedicationDao {
                 reason = reason,
                 suspendedAt = suspendedAt
             )
+        )
+    }
+
+    @Transaction
+    suspend fun resumeMedicationWithHistory(
+        medicationId: Int,
+        suspensionId: Int,
+        resumedAt: Long
+    ) {
+
+        resumeMedication(
+            medicationId = medicationId
+        )
+
+        resumeSuspensionHistory(
+            suspensionId = suspensionId,
+            resumedAt = resumedAt
         )
     }
 }
