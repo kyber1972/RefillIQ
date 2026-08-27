@@ -390,6 +390,30 @@ fun AddMedicationScreen(
                                 status = inventoryStatus
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Schedule",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Not configured",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        TextButton(
+                            onClick = {
+                                // Schedule setup will be connected next.
+                            }
+                        ) {
+                            Text("Set schedule")
+                        }
                     }
                 }
             }

@@ -6,13 +6,16 @@ import androidx.room.RoomDatabase
 @Database(
     entities = [
         Medication::class,
-        SuspensionHistory::class
+        SuspensionHistory::class,
+        MedicationSchedule::class
     ],
-    version = 3
+    version = 4
 )
 abstract class RefillIQDatabase : RoomDatabase() {
 
     abstract fun medicationDao(): MedicationDao
 
     abstract fun suspensionHistoryDao(): SuspensionHistoryDao
+
+    abstract fun medicationScheduleDao(): MedicationScheduleDao
 }
