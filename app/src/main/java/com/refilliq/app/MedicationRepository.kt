@@ -4,7 +4,8 @@ import kotlinx.coroutines.flow.Flow
 
 class MedicationRepository(
     private val medicationDao: MedicationDao,
-    private val suspensionHistoryDao: SuspensionHistoryDao
+    private val suspensionHistoryDao: SuspensionHistoryDao,
+    private val medicationScheduleDao: MedicationScheduleDao
 ) {
 
     suspend fun insertMedication(
@@ -51,5 +52,45 @@ class MedicationRepository(
         medicationId: Int
     ): List<SuspensionHistory> {
         return suspensionHistoryDao.getSuspensionHistory(medicationId)
+    }
+
+    suspend fun insertSchedule(
+        schedule: MedicationSchedule
+    ) {
+        medicationScheduleDao.insertSchedule(schedule)
+    }
+
+    suspend fun hasScheduleAtTime(
+        medicationId: Int,
+        time: String
+    ): Boolean {
+        return medicationScheduleDao.countScheduleAtTime(
+            medicationId = medicationId,
+            time = time
+        ) > 0
+    }
+
+    suspend fun deleteSchedule(
+        scheduleId: Int
+    ) {
+        medicationScheduleDao.deleteSchedule(
+            scheduleId = scheduleId
+        )
+    }
+
+    fun getSchedulesForMedication(
+        medicationId: Int
+    ): Flow<List<MedicationSchedule>> {
+        return medicationScheduleDao.getSchedulesForMedication(
+            medicationId
+        )
+    }
+
+    suspend fun deleteSchedulesForMedication(
+        medicationId: Int
+    ) {
+        medicationScheduleDao.deleteSchedulesForMedication(
+            medicationId
+        )
     }
 }

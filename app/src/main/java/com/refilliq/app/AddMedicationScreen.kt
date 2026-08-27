@@ -23,21 +23,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @Composable
 fun AddMedicationScreen(
     repository: MedicationRepository,
+    onSetSchedule: (Medication) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -69,10 +70,12 @@ fun AddMedicationScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
+
         repository
             .getAllMedications()
-            .collectLatest {
-                medications = it
+            .collect { medicationList ->
+
+                medications = medicationList
             }
     }
 
@@ -92,8 +95,12 @@ fun AddMedicationScreen(
 
         OutlinedTextField(
             value = medicationName,
-            onValueChange = { medicationName = it },
-            label = { Text("Medication Name") },
+            onValueChange = {
+                medicationName = it
+            },
+            label = {
+                Text("Medication Name")
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -101,8 +108,12 @@ fun AddMedicationScreen(
 
         OutlinedTextField(
             value = strength,
-            onValueChange = { strength = it },
-            label = { Text("Strength") },
+            onValueChange = {
+                strength = it
+            },
+            label = {
+                Text("Strength")
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -110,8 +121,12 @@ fun AddMedicationScreen(
 
         OutlinedTextField(
             value = quantity,
-            onValueChange = { quantity = it },
-            label = { Text("Quantity") },
+            onValueChange = {
+                quantity = it
+            },
+            label = {
+                Text("Quantity")
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -119,8 +134,12 @@ fun AddMedicationScreen(
 
         OutlinedTextField(
             value = dailyUsage,
-            onValueChange = { dailyUsage = it },
-            label = { Text("Daily Usage") },
+            onValueChange = {
+                dailyUsage = it
+            },
+            label = {
+                Text("Daily Usage")
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -137,7 +156,10 @@ fun AddMedicationScreen(
                 )
 
                 scope.launch {
-                    repository.insertMedication(medication)
+
+                    repository.insertMedication(
+                        medication
+                    )
                 }
 
                 savedMessage =
@@ -157,7 +179,9 @@ fun AddMedicationScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = savedMessage)
+        Text(
+            text = savedMessage
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -173,33 +197,44 @@ fun AddMedicationScreen(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
+
             items(medications) { medication ->
 
                 var menuExpanded by remember {
                     mutableStateOf(false)
                 }
 
+                val schedules by repository
+                    .getSchedulesForMedication(medication.id)
+                    .collectAsState(initial = emptyList())
+
                 val isSuspended =
                     medication.status == "SUSPENDED"
 
-                val quantity =
+                val medicationQuantity =
                     medication.quantity.toIntOrNull() ?: 0
 
-                val dailyUsage =
+                val medicationDailyUsage =
                     medication.dailyUsage.toIntOrNull() ?: 0
 
                 val daysRemaining =
-                    if (dailyUsage > 0) {
-                        quantity / dailyUsage
+                    if (medicationDailyUsage > 0) {
+                        medicationQuantity / medicationDailyUsage
                     } else {
                         0
                     }
 
                 val inventoryStatus =
                     when {
-                        daysRemaining <= 7 -> "Almost empty"
-                        daysRemaining <= 14 -> "Running low"
-                        else -> "In stock"
+
+                        daysRemaining <= 7 ->
+                            "Almost empty"
+
+                        daysRemaining <= 14 ->
+                            "Running low"
+
+                        else ->
+                            "In stock"
                     }
 
                 Card(
@@ -214,12 +249,14 @@ fun AddMedicationScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween
                         ) {
 
                             Text(
                                 text = medication.name,
-                                style = MaterialTheme.typography.titleMedium
+                                style =
+                                    MaterialTheme.typography.titleMedium
                             )
 
                             Box {
@@ -252,33 +289,42 @@ fun AddMedicationScreen(
 
                                         DropdownMenuItem(
                                             text = {
-                                                Text("Resume medication")
+                                                Text(
+                                                    "Resume medication"
+                                                )
                                             },
                                             onClick = {
 
                                                 menuExpanded = false
 
-                                                selectedMedication = medication
-                                                selectedSuspensionId = null
+                                                selectedMedication =
+                                                    medication
+
+                                                selectedSuspensionId =
+                                                    null
 
                                                 scope.launch {
 
                                                     val history =
-                                                        repository.getSuspensionHistory(
-                                                            medication.id
-                                                        )
+                                                        repository
+                                                            .getSuspensionHistory(
+                                                                medication.id
+                                                            )
 
                                                     val activeSuspension =
                                                         history.firstOrNull {
                                                             it.resumedAt == null
                                                         }
 
-                                                    if (activeSuspension != null) {
+                                                    if (
+                                                        activeSuspension != null
+                                                    ) {
 
                                                         selectedSuspensionId =
                                                             activeSuspension.id
 
-                                                        showResumeDialog = true
+                                                        showResumeDialog =
+                                                            true
                                                     }
                                                 }
                                             }
@@ -288,16 +334,25 @@ fun AddMedicationScreen(
 
                                         DropdownMenuItem(
                                             text = {
-                                                Text("Suspend medication")
+                                                Text(
+                                                    "Suspend medication"
+                                                )
                                             },
                                             onClick = {
 
                                                 menuExpanded = false
 
-                                                selectedMedication = medication
-                                                suspensionReason = ""
-                                                suspensionError = ""
-                                                showSuspendDialog = true
+                                                selectedMedication =
+                                                    medication
+
+                                                suspensionReason =
+                                                    ""
+
+                                                suspensionError =
+                                                    ""
+
+                                                showSuspendDialog =
+                                                    true
                                             }
                                         )
                                     }
@@ -314,30 +369,38 @@ fun AddMedicationScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(
+                            modifier = Modifier.height(4.dp)
+                        )
 
                         Text(
                             text = medication.strength,
-                            style = MaterialTheme.typography.bodyMedium
+                            style =
+                                MaterialTheme.typography.bodyMedium
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(
+                            modifier = Modifier.height(16.dp)
+                        )
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween
                         ) {
 
                             Column {
 
                                 Text(
                                     text = "Quantity",
-                                    style = MaterialTheme.typography.labelMedium
+                                    style =
+                                        MaterialTheme.typography.labelMedium
                                 )
 
                                 Text(
                                     text = medication.quantity,
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style =
+                                        MaterialTheme.typography.bodyLarge
                                 )
                             }
 
@@ -345,50 +408,130 @@ fun AddMedicationScreen(
 
                                 Text(
                                     text = "Daily usage",
-                                    style = MaterialTheme.typography.labelMedium
+                                    style =
+                                        MaterialTheme.typography.labelMedium
                                 )
 
                                 Text(
-                                    text = "${medication.dailyUsage} / day",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    text =
+                                        "${medication.dailyUsage} / day",
+                                    style =
+                                        MaterialTheme.typography.bodyLarge
                                 )
                             }
                         }
 
                         if (isSuspended) {
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(
+                                modifier = Modifier.height(12.dp)
+                            )
 
                             InventoryStatusBadge(
                                 status = "Suspended"
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "Reason:",
-                                style = MaterialTheme.typography.labelMedium
+                            Spacer(
+                                modifier = Modifier.height(8.dp)
                             )
 
                             Text(
-                                text = medication.suspensionReason,
-                                style = MaterialTheme.typography.bodyMedium
+                                text = "Reason:",
+                                style =
+                                    MaterialTheme.typography.labelMedium
+                            )
+
+                            Text(
+                                text =
+                                    medication.suspensionReason,
+                                style =
+                                    MaterialTheme.typography.bodyMedium
                             )
 
                         } else {
 
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Text(
-                                text = "$daysRemaining days remaining",
-                                style = MaterialTheme.typography.bodyMedium
+                            Spacer(
+                                modifier = Modifier.height(12.dp)
                             )
 
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text =
+                                    "$daysRemaining days remaining",
+                                style =
+                                    MaterialTheme.typography.bodyMedium
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(4.dp)
+                            )
 
                             InventoryStatusBadge(
                                 status = inventoryStatus
                             )
+                        }
+
+                        Spacer(
+                            modifier = Modifier.height(16.dp)
+                        )
+
+                        Text(
+                            text = "Schedule",
+                            style =
+                                MaterialTheme.typography.labelMedium
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(4.dp)
+                        )
+
+                        if (schedules.isEmpty()) {
+
+                            Text(
+                                text = "Not configured",
+                                style =
+                                    MaterialTheme.typography.bodyMedium
+                            )
+
+                        } else {
+
+                            schedules.forEach { schedule ->
+
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                vertical = 4.dp
+                                            ),
+                                    horizontalArrangement =
+                                        Arrangement.SpaceBetween
+                                ) {
+
+                                    Text(
+                                        text = schedule.time,
+                                        style =
+                                            MaterialTheme.typography.bodyMedium
+                                    )
+
+                                    Text(
+                                        text = schedule.dose,
+                                        style =
+                                            MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(
+                            modifier = Modifier.height(4.dp)
+                        )
+
+                        TextButton(
+                            onClick = {
+                                onSetSchedule(medication)
+                            }
+                        ) {
+                            Text("Set schedule")
                         }
                     }
                 }
@@ -409,34 +552,47 @@ fun AddMedicationScreen(
                     Column {
 
                         Text(
-                            text = "Why is this medication being suspended?"
+                            text =
+                                "Why is this medication being suspended?"
                         )
 
                         Spacer(
-                            modifier = Modifier.height(12.dp)
+                            modifier =
+                                Modifier.height(12.dp)
                         )
 
                         OutlinedTextField(
-                            value = suspensionReason,
+                            value =
+                                suspensionReason,
                             onValueChange = {
 
-                                suspensionReason = it
+                                suspensionReason =
+                                    it
 
-                                if (suspensionError.isNotEmpty()) {
-                                    suspensionError = ""
+                                if (
+                                    suspensionError.isNotEmpty()
+                                ) {
+                                    suspensionError =
+                                        ""
                                 }
                             },
                             label = {
                                 Text("Reason")
                             },
-                            isError = suspensionError.isNotEmpty(),
+                            isError =
+                                suspensionError.isNotEmpty(),
                             supportingText = {
 
-                                if (suspensionError.isNotEmpty()) {
-                                    Text(suspensionError)
+                                if (
+                                    suspensionError.isNotEmpty()
+                                ) {
+                                    Text(
+                                        suspensionError
+                                    )
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier =
+                                Modifier.fillMaxWidth()
                         )
                     }
                 },
@@ -455,21 +611,32 @@ fun AddMedicationScreen(
 
                             } else {
 
-                                selectedMedication?.let { medication ->
+                                selectedMedication?.let {
+                                        medication ->
 
                                     scope.launch {
 
-                                        repository.suspendMedication(
-                                            medicationId = medication.id,
-                                            reason = reason,
-                                            suspendedAt =
-                                                System.currentTimeMillis()
-                                        )
+                                        repository
+                                            .suspendMedication(
+                                                medicationId =
+                                                    medication.id,
+                                                reason =
+                                                    reason,
+                                                suspendedAt =
+                                                    System.currentTimeMillis()
+                                            )
 
-                                        showSuspendDialog = false
-                                        suspensionReason = ""
-                                        suspensionError = ""
-                                        selectedMedication = null
+                                        showSuspendDialog =
+                                            false
+
+                                        suspensionReason =
+                                            ""
+
+                                        suspensionError =
+                                            ""
+
+                                        selectedMedication =
+                                            null
                                     }
                                 }
                             }
@@ -482,7 +649,8 @@ fun AddMedicationScreen(
 
                     TextButton(
                         onClick = {
-                            showSuspendDialog = false
+                            showSuspendDialog =
+                                false
                         }
                     ) {
                         Text("Cancel")
@@ -495,9 +663,15 @@ fun AddMedicationScreen(
 
             AlertDialog(
                 onDismissRequest = {
-                    showResumeDialog = false
-                    selectedSuspensionId = null
-                    selectedMedication = null
+
+                    showResumeDialog =
+                        false
+
+                    selectedSuspensionId =
+                        null
+
+                    selectedMedication =
+                        null
                 },
                 title = {
                     Text("Resume medication")
@@ -505,7 +679,11 @@ fun AddMedicationScreen(
                 text = {
 
                     Text(
-                        text = "Resume ${selectedMedication?.name ?: "this medication"}?"
+                        text =
+                            "Resume ${
+                                selectedMedication?.name
+                                    ?: "this medication"
+                            }?"
                     )
                 },
                 confirmButton = {
@@ -526,16 +704,24 @@ fun AddMedicationScreen(
 
                                 scope.launch {
 
-                                    repository.resumeMedication(
-                                        medicationId = medication.id,
-                                        suspensionId = suspensionId,
-                                        resumedAt =
-                                            System.currentTimeMillis()
-                                    )
+                                    repository
+                                        .resumeMedication(
+                                            medicationId =
+                                                medication.id,
+                                            suspensionId =
+                                                suspensionId,
+                                            resumedAt =
+                                                System.currentTimeMillis()
+                                        )
 
-                                    showResumeDialog = false
-                                    selectedSuspensionId = null
-                                    selectedMedication = null
+                                    showResumeDialog =
+                                        false
+
+                                    selectedSuspensionId =
+                                        null
+
+                                    selectedMedication =
+                                        null
                                 }
                             }
                         }
@@ -548,9 +734,14 @@ fun AddMedicationScreen(
                     TextButton(
                         onClick = {
 
-                            showResumeDialog = false
-                            selectedSuspensionId = null
-                            selectedMedication = null
+                            showResumeDialog =
+                                false
+
+                            selectedSuspensionId =
+                                null
+
+                            selectedMedication =
+                                null
                         }
                     ) {
                         Text("Cancel")
@@ -568,25 +759,37 @@ fun InventoryStatusBadge(
 
     val statusColor =
         when (status) {
-            "Almost empty" -> Color.Red
-            "Suspended" -> Color.Red
-            "Running low" -> Color(0xFFFFA000)
-            else -> Color(0xFF2E7D32)
+
+            "Almost empty" ->
+                Color.Red
+
+            "Suspended" ->
+                Color.Red
+
+            "Running low" ->
+                Color(0xFFFFA000)
+
+            else ->
+                Color(0xFF2E7D32)
         }
 
     Surface(
-        color = statusColor.copy(alpha = 0.12f),
-        shape = RoundedCornerShape(50)
+        color =
+            statusColor.copy(alpha = 0.12f),
+        shape =
+            RoundedCornerShape(50)
     ) {
 
         Text(
             text = status,
             color = statusColor,
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(
-                horizontal = 12.dp,
-                vertical = 6.dp
-            )
+            style =
+                MaterialTheme.typography.labelMedium,
+            modifier =
+                Modifier.padding(
+                    horizontal = 12.dp,
+                    vertical = 6.dp
+                )
         )
     }
 }
