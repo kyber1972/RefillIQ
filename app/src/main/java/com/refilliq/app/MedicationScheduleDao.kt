@@ -3,6 +3,7 @@ package com.refilliq.app
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -10,6 +11,11 @@ interface MedicationScheduleDao {
 
     @Insert
     suspend fun insertSchedule(
+        schedule: MedicationSchedule
+    )
+
+    @Update
+    suspend fun updateSchedule(
         schedule: MedicationSchedule
     )
 

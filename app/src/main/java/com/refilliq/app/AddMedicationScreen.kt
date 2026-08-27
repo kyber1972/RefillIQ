@@ -514,7 +514,7 @@ fun AddMedicationScreen(
                                     )
 
                                     Text(
-                                        text = schedule.dose,
+                                        text = "${schedule.dose} ${schedule.doseUnit}",
                                         style =
                                             MaterialTheme.typography.bodyMedium
                                     )

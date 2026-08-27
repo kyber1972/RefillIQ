@@ -60,6 +60,12 @@ class MedicationRepository(
         medicationScheduleDao.insertSchedule(schedule)
     }
 
+    suspend fun updateSchedule(
+        schedule: MedicationSchedule
+    ) {
+        medicationScheduleDao.updateSchedule(schedule)
+    }
+
     suspend fun hasScheduleAtTime(
         medicationId: Int,
         time: String

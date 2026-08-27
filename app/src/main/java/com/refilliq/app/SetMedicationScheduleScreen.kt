@@ -21,14 +21,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,7 +54,6 @@ fun SetMedicationScheduleScreen(
 ) {
 
     val context = LocalContext.current
-
     val scope = rememberCoroutineScope()
 
     val dose = remember {
@@ -86,9 +84,25 @@ fun SetMedicationScheduleScreen(
         mutableStateOf("")
     }
 
+    val editingScheduleId = remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    val editingPendingIndex = remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    val originalTime = remember {
+        mutableStateOf("")
+    }
+
     val canAddSchedule =
         dose.value.isNotBlank() &&
                 time.value.isNotBlank()
+
+    val isEditing =
+        editingScheduleId.value != null ||
+                editingPendingIndex.value != null
 
     fun showTimePicker(context: Context) {
 
@@ -114,6 +128,18 @@ fun SetMedicationScheduleScreen(
             minute,
             true
         ).show()
+    }
+
+    fun clearEditing() {
+
+        editingScheduleId.value = null
+        editingPendingIndex.value = null
+        originalTime.value = ""
+
+        dose.value = ""
+        time.value = ""
+        selectedUnit.value = "tablet"
+        duplicateError.value = ""
     }
 
     Column(
@@ -363,15 +389,37 @@ fun SetMedicationScheduleScreen(
 
                     val selectedTime = time.value.trim()
 
+                    val editingExisting =
+                        editingScheduleId.value != null
+
+                    val editingPending =
+                        editingPendingIndex.value != null
+
+                    val timeChanged =
+                        selectedTime != originalTime.value
+
                     val alreadyExistsInDatabase =
-                        repository.hasScheduleAtTime(
-                            medicationId = medicationId,
-                            time = selectedTime
-                        )
+                        if (
+                            editingExisting &&
+                            !timeChanged
+                        ) {
+                            false
+                        } else {
+                            repository.hasScheduleAtTime(
+                                medicationId = medicationId,
+                                time = selectedTime
+                            )
+                        }
 
                     val alreadyExistsInPending =
-                        pendingSchedules.any {
-                            it.time == selectedTime
+                        pendingSchedules.anyIndexed { index, schedule ->
+
+                            val isCurrentPending =
+                                editingPending &&
+                                        editingPendingIndex.value == index
+
+                            !isCurrentPending &&
+                                    schedule.time == selectedTime
                         }
 
                     if (
@@ -384,23 +432,59 @@ fun SetMedicationScheduleScreen(
 
                     } else {
 
-                        pendingSchedules.add(
-                            ScheduleItem(
-                                dose = dose.value.trim(),
-                                doseUnit = selectedUnit.value,
-                                time = selectedTime
-                            )
-                        )
+                        if (editingScheduleId.value != null) {
 
-                        dose.value = ""
-                        time.value = ""
-                        duplicateError.value = ""
+                            val updatedSchedule =
+                                MedicationSchedule(
+                                    id = editingScheduleId.value!!,
+                                    medicationId = medicationId,
+                                    dose = dose.value.trim(),
+                                    doseUnit = selectedUnit.value,
+                                    time = selectedTime
+                                )
+
+                            repository.updateSchedule(
+                                updatedSchedule
+                            )
+
+                        } else if (
+                            editingPendingIndex.value != null
+                        ) {
+
+                            val index =
+                                editingPendingIndex.value!!
+
+                            pendingSchedules[index] =
+                                ScheduleItem(
+                                    dose = dose.value.trim(),
+                                    doseUnit = selectedUnit.value,
+                                    time = selectedTime
+                                )
+
+                        } else {
+
+                            pendingSchedules.add(
+                                ScheduleItem(
+                                    dose = dose.value.trim(),
+                                    doseUnit = selectedUnit.value,
+                                    time = selectedTime
+                                )
+                            )
+                        }
+
+                        clearEditing()
                     }
                 }
             },
             enabled = canAddSchedule
         ) {
-            Text("Add schedule")
+            Text(
+                if (isEditing) {
+                    "Update schedule"
+                } else {
+                    "Add schedule"
+                }
+            )
         }
 
         Spacer(
@@ -454,24 +538,54 @@ fun SetMedicationScheduleScreen(
                             )
                         }
 
-                        TextButton(
-                            onClick = {
+                        Row {
 
-                                scope.launch {
+                            TextButton(
+                                onClick = {
 
-                                    repository.deleteSchedule(
-                                        scheduleId = schedule.id
-                                    )
+                                    dose.value =
+                                        schedule.dose
+
+                                    selectedUnit.value =
+                                        schedule.doseUnit
+
+                                    time.value =
+                                        schedule.time
+
+                                    originalTime.value =
+                                        schedule.time
+
+                                    editingScheduleId.value =
+                                        schedule.id
+
+                                    editingPendingIndex.value =
+                                        null
+
+                                    duplicateError.value = ""
                                 }
+                            ) {
+                                Text("Edit")
                             }
-                        ) {
-                            Text("Delete")
+
+                            TextButton(
+                                onClick = {
+
+                                    scope.launch {
+
+                                        repository.deleteSchedule(
+                                            scheduleId = schedule.id
+                                        )
+                                    }
+                                }
+                            ) {
+                                Text("Delete")
+                            }
                         }
                     }
                 }
             }
 
-            pendingSchedules.forEach { schedule ->
+            pendingSchedules.forEachIndexed { index, schedule ->
 
                 Card(
                     modifier = Modifier
@@ -501,13 +615,40 @@ fun SetMedicationScheduleScreen(
                                 style =
                                     MaterialTheme.typography.bodyMedium
                             )
+
+                            Text(
+                                text = "New",
+                                style =
+                                    MaterialTheme.typography.labelMedium
+                            )
                         }
 
-                        Text(
-                            text = "New",
-                            style =
-                                MaterialTheme.typography.labelMedium
-                        )
+                        TextButton(
+                            onClick = {
+
+                                dose.value =
+                                    schedule.dose
+
+                                selectedUnit.value =
+                                    schedule.doseUnit
+
+                                time.value =
+                                    schedule.time
+
+                                originalTime.value =
+                                    schedule.time
+
+                                editingPendingIndex.value =
+                                    index
+
+                                editingScheduleId.value =
+                                    null
+
+                                duplicateError.value = ""
+                            }
+                        ) {
+                            Text("Edit")
+                        }
                     }
                 }
             }
@@ -519,7 +660,9 @@ fun SetMedicationScheduleScreen(
         ) {
 
             TextButton(
-                onClick = onCancel
+                onClick = {
+                    onCancel()
+                }
             ) {
                 Text("Cancel")
             }
@@ -554,4 +697,18 @@ fun SetMedicationScheduleScreen(
             }
         }
     }
+}
+
+private inline fun <T> List<T>.anyIndexed(
+    predicate: (index: Int, T) -> Boolean
+): Boolean {
+
+    for (index in indices) {
+
+        if (predicate(index, this[index])) {
+            return true
+        }
+    }
+
+    return false
 }
