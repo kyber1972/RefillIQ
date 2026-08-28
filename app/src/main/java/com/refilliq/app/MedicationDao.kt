@@ -62,6 +62,16 @@ interface MedicationDao {
         resumedAt: Long
     )
 
+    @Query(
+        """
+        DELETE FROM medications
+        WHERE id = :medicationId
+        """
+    )
+    suspend fun deleteMedication(
+        medicationId: Int
+    )
+
     @Transaction
     suspend fun suspendMedicationWithHistory(
         medicationId: Int,

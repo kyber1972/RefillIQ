@@ -15,7 +15,7 @@ data class Medication(
 
     val quantity: String,
 
-    val dailyUsage: String,
+    val quantityUnit: String,
 
     val status: String = "ACTIVE",
 

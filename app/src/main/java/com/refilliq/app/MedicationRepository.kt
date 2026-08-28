@@ -99,4 +99,17 @@ class MedicationRepository(
             medicationId
         )
     }
+
+    suspend fun deleteMedication(
+        medicationId: Int
+    ) {
+
+        medicationScheduleDao.deleteSchedulesForMedication(
+            medicationId
+        )
+
+        medicationDao.deleteMedication(
+            medicationId
+        )
+    }
 }

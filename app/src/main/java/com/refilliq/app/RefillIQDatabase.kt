@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase
         SuspensionHistory::class,
         MedicationSchedule::class
     ],
-    version = 5
+    version = 6
 )
 abstract class RefillIQDatabase : RoomDatabase() {
 

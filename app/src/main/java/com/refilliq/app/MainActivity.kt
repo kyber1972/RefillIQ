@@ -16,6 +16,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.refilliq.app.ui.theme.RefillIQTheme
 
+
 val MIGRATION_1_2 = object : Migration(1, 2) {
 
     override fun migrate(
@@ -44,6 +45,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+
 val MIGRATION_2_3 = object : Migration(2, 3) {
 
     override fun migrate(
@@ -63,6 +65,7 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     }
 }
 
+
 val MIGRATION_3_4 = object : Migration(3, 4) {
 
     override fun migrate(
@@ -80,6 +83,8 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+
 val MIGRATION_4_5 = object : Migration(4, 5) {
 
     override fun migrate(
@@ -93,6 +98,8 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         )
     }
 }
+
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -125,36 +132,65 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf<Medication?>(null)
                 }
 
+                var historyMedication by remember {
+                    mutableStateOf<Medication?>(null)
+                }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
 
-                    val medication = selectedMedication
+                    when {
 
-                    if (medication == null) {
+                        historyMedication != null -> {
 
-                        AddMedicationScreen(
-                            repository = repository,
-                            onSetSchedule = { selected ->
-                                selectedMedication = selected
-                            },
-                            modifier = Modifier.padding(innerPadding)
-                        )
+                            MedicationHistoryScreen(
+                                medication = historyMedication!!,
+                                repository = repository,
+                                onBack = {
+                                    historyMedication = null
+                                }
+                            )
+                        }
 
-                    } else {
+                        selectedMedication != null -> {
 
-                        SetMedicationScheduleScreen(
-                            medicationId = medication.id,
-                            medicationName = medication.name,
-                            strength = medication.strength,
-                            repository = repository,
-                            onSave = {
-                                selectedMedication = null
-                            },
-                            onCancel = {
-                                selectedMedication = null
-                            }
-                        )
+                            val medication =
+                                selectedMedication!!
+
+                            SetMedicationScheduleScreen(
+                                medicationId = medication.id,
+                                medicationName = medication.name,
+                                strength = medication.strength,
+                                repository = repository,
+                                onSave = {
+                                    selectedMedication = null
+                                },
+                                onCancel = {
+                                    selectedMedication = null
+                                }
+                            )
+                        }
+
+                        else -> {
+
+                            AddMedicationScreen(
+                                repository = repository,
+
+                                onSetSchedule = { selected ->
+                                    selectedMedication = selected
+                                },
+
+                                onMedicationHistory = { selected ->
+                                    historyMedication = selected
+                                },
+
+                                modifier =
+                                    Modifier.padding(
+                                        innerPadding
+                                    )
+                            )
+                        }
                     }
                 }
             }
