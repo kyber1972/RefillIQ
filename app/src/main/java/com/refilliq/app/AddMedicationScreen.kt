@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -32,14 +33,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 @Composable
 fun AddMedicationScreen(
     repository: MedicationRepository,
     onSetSchedule: (Medication) -> Unit,
     onMedicationHistory: (Medication) -> Unit,
+    onMedicationDoseHistory: (Medication) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -75,11 +79,39 @@ fun AddMedicationScreen(
         mutableStateOf(false)
     }
 
+    var showEditDialog by remember {
+        mutableStateOf(false)
+    }
+
     var suspensionReason by remember {
         mutableStateOf("")
     }
 
     var suspensionError by remember {
+        mutableStateOf("")
+    }
+
+    var editMedicationName by remember {
+        mutableStateOf("")
+    }
+
+    var editStrength by remember {
+        mutableStateOf("")
+    }
+
+    var editQuantity by remember {
+        mutableStateOf("")
+    }
+
+    var editQuantityUnit by remember {
+        mutableStateOf("tablet")
+    }
+
+    var editQuantityUnitMenuExpanded by remember {
+        mutableStateOf(false)
+    }
+
+    var editError by remember {
         mutableStateOf("")
     }
 
@@ -169,6 +201,9 @@ fun AddMedicationScreen(
             label = {
                 Text("Quantity")
             },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -207,135 +242,37 @@ fun AddMedicationScreen(
                 }
             ) {
 
-                DropdownMenuItem(
-                    text = {
-                        Text("Tablet")
-                    },
-                    onClick = {
-                        quantityUnit = "tablet"
-                        quantityUnitMenuExpanded = false
-                    }
+                val units = listOf(
+                    "tablet",
+                    "pill",
+                    "capsule",
+                    "softgel",
+                    "mL",
+                    "drop",
+                    "puff",
+                    "injection",
+                    "packet",
+                    "suppository",
+                    "tsp",
+                    "tbsp",
+                    "other"
                 )
 
-                DropdownMenuItem(
-                    text = {
-                        Text("Pill")
-                    },
-                    onClick = {
-                        quantityUnit = "pill"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
+                units.forEach { unit ->
 
-                DropdownMenuItem(
-                    text = {
-                        Text("Capsule")
-                    },
-                    onClick = {
-                        quantityUnit = "capsule"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
+                    DropdownMenuItem(
+                        text = {
+                            Text(unit)
+                        },
+                        onClick = {
 
-                DropdownMenuItem(
-                    text = {
-                        Text("Softgel")
-                    },
-                    onClick = {
-                        quantityUnit = "softgel"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
+                            quantityUnit = unit
 
-                DropdownMenuItem(
-                    text = {
-                        Text("mL")
-                    },
-                    onClick = {
-                        quantityUnit = "mL"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("Drop")
-                    },
-                    onClick = {
-                        quantityUnit = "drop"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("Puff")
-                    },
-                    onClick = {
-                        quantityUnit = "puff"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("Injection")
-                    },
-                    onClick = {
-                        quantityUnit = "injection"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("Packet")
-                    },
-                    onClick = {
-                        quantityUnit = "packet"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("Suppository")
-                    },
-                    onClick = {
-                        quantityUnit = "suppository"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("tsp")
-                    },
-                    onClick = {
-                        quantityUnit = "tsp"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("tbsp")
-                    },
-                    onClick = {
-                        quantityUnit = "tbsp"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Text("Other")
-                    },
-                    onClick = {
-                        quantityUnit = "other"
-                        quantityUnitMenuExpanded = false
-                    }
-                )
+                            quantityUnitMenuExpanded =
+                                false
+                        }
+                    )
+                }
             }
         }
 
@@ -346,12 +283,36 @@ fun AddMedicationScreen(
         Button(
             onClick = {
 
-                val medication = Medication(
-                    name = medicationName.trim(),
-                    strength = strength.trim(),
-                    quantity = quantity.trim(),
-                    quantityUnit = quantityUnit
-                )
+                val quantityValue =
+                    quantity.trim().toDoubleOrNull()
+
+                if (
+                    medicationName.isBlank() ||
+                    strength.isBlank() ||
+                    quantityValue == null ||
+                    quantityValue < 0.0
+                ) {
+
+                    savedMessage =
+                        "Please enter valid medication information."
+
+                    return@Button
+                }
+
+                val medication =
+                    Medication(
+                        name =
+                            medicationName.trim(),
+
+                        strength =
+                            strength.trim(),
+
+                        quantity =
+                            quantityValue,
+
+                        quantityUnit =
+                            quantityUnit
+                    )
 
                 scope.launch {
 
@@ -361,9 +322,9 @@ fun AddMedicationScreen(
                 }
 
                 savedMessage =
-                    "Medication: $medicationName\n" +
-                            "Strength: $strength\n" +
-                            "Quantity: $quantity $quantityUnit"
+                    "Medication: ${medicationName.trim()}\n" +
+                            "Strength: ${strength.trim()}\n" +
+                            "Quantity: $quantityValue $quantityUnit"
 
                 medicationName = ""
                 strength = ""
@@ -415,13 +376,25 @@ fun AddMedicationScreen(
                         initial = emptyList()
                     )
 
+                /*
+                 * All dose events for this medication.
+                 *
+                 * Because this is a Flow, the UI updates
+                 * automatically whenever a new Taken is recorded.
+                 */
+                val doses by repository
+                    .getDosesForMedication(
+                        medication.id
+                    )
+                    .collectAsState(
+                        initial = emptyList()
+                    )
+
                 val isSuspended =
                     medication.status == "SUSPENDED"
 
                 val medicationQuantity =
                     medication.quantity
-                        .toDoubleOrNull()
-                        ?: 0.0
 
                 val normalizedQuantityUnit =
                     medication.quantityUnit
@@ -438,10 +411,7 @@ fun AddMedicationScreen(
                                     normalizedQuantityUnit
                         }
                         .sumOf {
-
                             it.dose
-                                .toDoubleOrNull()
-                                ?: 0.0
                         }
 
                 val daysRemaining =
@@ -456,7 +426,6 @@ fun AddMedicationScreen(
                                 ).toInt()
 
                     } else {
-
                         0
                     }
 
@@ -486,14 +455,21 @@ fun AddMedicationScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
 
+                        /*
+                         * MEDICATION HEADER
+                         */
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier =
+                                Modifier.fillMaxWidth(),
+
                             horizontalArrangement =
                                 Arrangement.SpaceBetween
                         ) {
 
                             Text(
-                                text = medication.name,
+                                text =
+                                    medication.name,
+
                                 style =
                                     MaterialTheme
                                         .typography
@@ -513,12 +489,17 @@ fun AddMedicationScreen(
                                 DropdownMenu(
                                     expanded =
                                         menuExpanded,
+
                                     onDismissRequest = {
-                                        menuExpanded =
-                                            false
+                                        menuExpanded = false
                                     }
                                 ) {
 
+                                    /*
+                                     * EDIT MEDICATION
+                                     *
+                                     * Existing functionality preserved.
+                                     */
                                     DropdownMenuItem(
                                         text = {
                                             Text(
@@ -526,11 +507,36 @@ fun AddMedicationScreen(
                                             )
                                         },
                                         onClick = {
+
                                             menuExpanded =
                                                 false
+
+                                            editMedicationName =
+                                                medication.name
+
+                                            editStrength =
+                                                medication.strength
+
+                                            editQuantity =
+                                                medication.quantity
+                                                    .toString()
+
+                                            editQuantityUnit =
+                                                medication.quantityUnit
+
+                                            editError = ""
+
+                                            selectedMedication =
+                                                medication
+
+                                            showEditDialog =
+                                                true
                                         }
                                     )
 
+                                    /*
+                                     * MEDICATION HISTORY
+                                     */
                                     DropdownMenuItem(
                                         text = {
                                             Text(
@@ -548,6 +554,29 @@ fun AddMedicationScreen(
                                         }
                                     )
 
+                                    /*
+                                     * DOSE HISTORY
+                                     */
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Dose History"
+                                            )
+                                        },
+                                        onClick = {
+
+                                            menuExpanded =
+                                                false
+
+                                            onMedicationDoseHistory(
+                                                medication
+                                            )
+                                        }
+                                    )
+
+                                    /*
+                                     * RESUME / SUSPEND
+                                     */
                                     if (isSuspended) {
 
                                         DropdownMenuItem(
@@ -576,10 +605,11 @@ fun AddMedicationScreen(
                                                             )
 
                                                     val activeSuspension =
-                                                        history.firstOrNull {
-                                                            it.resumedAt ==
-                                                                    null
-                                                        }
+                                                        history
+                                                            .firstOrNull {
+                                                                it.resumedAt ==
+                                                                        null
+                                                            }
 
                                                     if (
                                                         activeSuspension !=
@@ -587,8 +617,7 @@ fun AddMedicationScreen(
                                                     ) {
 
                                                         selectedSuspensionId =
-                                                            activeSuspension
-                                                                .id
+                                                            activeSuspension.id
 
                                                         showResumeDialog =
                                                             true
@@ -625,6 +654,11 @@ fun AddMedicationScreen(
                                         )
                                     }
 
+                                    /*
+                                     * DELETE
+                                     *
+                                     * Existing behavior preserved.
+                                     */
                                     DropdownMenuItem(
                                         text = {
                                             Text(
@@ -645,7 +679,9 @@ fun AddMedicationScreen(
                         )
 
                         Text(
-                            text = medication.strength,
+                            text =
+                                medication.strength,
+
                             style =
                                 MaterialTheme
                                     .typography
@@ -656,8 +692,13 @@ fun AddMedicationScreen(
                             modifier = Modifier.height(16.dp)
                         )
 
+                        /*
+                         * QUANTITY / DAILY USAGE
+                         */
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier =
+                                Modifier.fillMaxWidth(),
+
                             horizontalArrangement =
                                 Arrangement.SpaceBetween
                         ) {
@@ -676,6 +717,7 @@ fun AddMedicationScreen(
                                     text =
                                         "${medication.quantity} " +
                                                 medication.quantityUnit,
+
                                     style =
                                         MaterialTheme
                                             .typography
@@ -706,6 +748,7 @@ fun AddMedicationScreen(
 
                                             "Not configured"
                                         },
+
                                     style =
                                         MaterialTheme
                                             .typography
@@ -718,6 +761,11 @@ fun AddMedicationScreen(
                             modifier = Modifier.height(12.dp)
                         )
 
+                        /*
+                         * INVENTORY STATUS
+                         *
+                         * Inventory is NOT changed yet.
+                         */
                         if (isSuspended) {
 
                             InventoryStatusBadge(
@@ -725,7 +773,8 @@ fun AddMedicationScreen(
                             )
 
                             Spacer(
-                                modifier = Modifier.height(8.dp)
+                                modifier =
+                                    Modifier.height(8.dp)
                             )
 
                             Text(
@@ -739,6 +788,7 @@ fun AddMedicationScreen(
                             Text(
                                 text =
                                     medication.suspensionReason,
+
                                 style =
                                     MaterialTheme
                                         .typography
@@ -750,6 +800,7 @@ fun AddMedicationScreen(
                             Text(
                                 text =
                                     "$daysRemaining days remaining",
+
                                 style =
                                     MaterialTheme
                                         .typography
@@ -757,18 +808,24 @@ fun AddMedicationScreen(
                             )
 
                             Spacer(
-                                modifier = Modifier.height(4.dp)
+                                modifier =
+                                    Modifier.height(4.dp)
                             )
 
                             InventoryStatusBadge(
-                                status = inventoryStatus
+                                status =
+                                    inventoryStatus
                             )
                         }
 
                         Spacer(
-                            modifier = Modifier.height(16.dp)
+                            modifier =
+                                Modifier.height(16.dp)
                         )
 
+                        /*
+                         * SCHEDULE
+                         */
                         Text(
                             text = "Schedule",
                             style =
@@ -778,7 +835,8 @@ fun AddMedicationScreen(
                         )
 
                         Spacer(
-                            modifier = Modifier.height(4.dp)
+                            modifier =
+                                Modifier.height(4.dp)
                         )
 
                         if (schedules.isEmpty()) {
@@ -793,49 +851,266 @@ fun AddMedicationScreen(
 
                         } else {
 
+                            /*
+                             * TODAY RANGE
+                             */
+                            val startOfDay =
+                                remember {
+                                    Calendar.getInstance()
+                                        .apply {
+
+                                            set(
+                                                Calendar.HOUR_OF_DAY,
+                                                0
+                                            )
+
+                                            set(
+                                                Calendar.MINUTE,
+                                                0
+                                            )
+
+                                            set(
+                                                Calendar.SECOND,
+                                                0
+                                            )
+
+                                            set(
+                                                Calendar.MILLISECOND,
+                                                0
+                                            )
+                                        }
+                                        .timeInMillis
+                                }
+
+                            val endOfDay =
+                                remember(startOfDay) {
+
+                                    val calendar =
+                                        Calendar.getInstance()
+
+                                    calendar.timeInMillis =
+                                        startOfDay
+
+                                    calendar.add(
+                                        Calendar.DAY_OF_YEAR,
+                                        1
+                                    )
+
+                                    calendar.timeInMillis
+                                }
+
                             schedules.forEach { schedule ->
 
-                                Row(
+                                /*
+                                 * Count every Taken event for
+                                 * this schedule today.
+                                 *
+                                 * There is intentionally NO
+                                 * "already taken" restriction.
+                                 */
+                                val takenTodayCount =
+                                    doses.count { dose ->
+
+                                        dose.scheduleId ==
+                                                schedule.id &&
+
+                                                dose.takenAt >=
+                                                startOfDay &&
+
+                                                dose.takenAt <
+                                                endOfDay
+                                    }
+
+                                Column(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
                                             .padding(
-                                                vertical = 4.dp
-                                            ),
-                                    horizontalArrangement =
-                                        Arrangement
-                                            .SpaceBetween
+                                                vertical = 6.dp
+                                            )
                                 ) {
 
-                                    Text(
-                                        text =
-                                            schedule.time,
-                                        style =
-                                            MaterialTheme
-                                                .typography
-                                                .bodyMedium
+                                    /*
+                                     * TIME + DOSE
+                                     */
+                                    Row(
+                                        modifier =
+                                            Modifier.fillMaxWidth(),
+
+                                        horizontalArrangement =
+                                            Arrangement.SpaceBetween
+                                    ) {
+
+                                        Column {
+
+                                            Text(
+                                                text =
+                                                    schedule.time,
+
+                                                style =
+                                                    MaterialTheme
+                                                        .typography
+                                                        .bodyLarge
+                                            )
+
+                                            Text(
+                                                text =
+                                                    "${schedule.dose} " +
+                                                            schedule.doseUnit,
+
+                                                style =
+                                                    MaterialTheme
+                                                        .typography
+                                                        .bodyMedium
+                                            )
+                                        }
+
+                                        TextButton(
+                                            onClick = {
+
+                                                /*
+                                                 * EDIT SCHEDULE
+                                                 */
+                                                onSetSchedule(
+                                                    medication
+                                                )
+                                            }
+                                        ) {
+                                            Text("Edit")
+                                        }
+                                    }
+
+                                    Spacer(
+                                        modifier =
+                                            Modifier.height(4.dp)
                                     )
 
-                                    Text(
-                                        text =
-                                            "${schedule.dose} " +
-                                                    schedule.doseUnit,
-                                        style =
-                                            MaterialTheme
-                                                .typography
-                                                .bodyMedium
-                                    )
+                                    /*
+                                     * TAKEN COUNT
+                                     */
+                                    if (
+                                        takenTodayCount > 0
+                                    ) {
+
+                                        Text(
+                                            text =
+                                                "Taken today: " +
+                                                        takenTodayCount,
+
+                                            style =
+                                                MaterialTheme
+                                                    .typography
+                                                    .bodySmall
+                                        )
+
+                                        Spacer(
+                                            modifier =
+                                                Modifier.height(4.dp)
+                                        )
+                                    }
+
+                                    /*
+                                     * MARK AS TAKEN
+                                     *
+                                     * A schedule can be marked as taken
+                                     * only once per day.
+                                     *
+                                     * The dose history still keeps every
+                                     * previously recorded event.
+                                     */
+                                    val isTakenToday =
+                                        takenTodayCount > 0
+
+                                    Button(
+                                        onClick = {
+
+                                            scope.launch {
+
+                                                val calendar = Calendar.getInstance().apply {
+                                                    set(Calendar.HOUR_OF_DAY, 0)
+                                                    set(Calendar.MINUTE, 0)
+                                                    set(Calendar.SECOND, 0)
+                                                    set(Calendar.MILLISECOND, 0)
+                                                }
+
+                                                val todayStart =
+                                                    calendar.timeInMillis
+
+                                                calendar.add(
+                                                    Calendar.DAY_OF_YEAR,
+                                                    1
+                                                )
+
+                                                val todayEnd =
+                                                    calendar.timeInMillis
+
+                                                val alreadyTakenToday =
+                                                    doses.any { dose ->
+                                                        dose.scheduleId ==
+                                                                schedule.id &&
+                                                                dose.takenAt >=
+                                                                todayStart &&
+                                                                dose.takenAt <
+                                                                todayEnd
+                                                    }
+
+                                                if (!alreadyTakenToday) {
+
+                                                    repository
+                                                        .insertDose(
+                                                            MedicationDose(
+                                                                medicationId =
+                                                                    medication.id,
+
+                                                                scheduleId =
+                                                                    schedule.id,
+
+                                                                dose =
+                                                                    schedule.dose,
+
+                                                                doseUnit =
+                                                                    schedule.doseUnit,
+
+                                                                takenAt =
+                                                                    System
+                                                                        .currentTimeMillis()
+                                                            )
+                                                        )
+                                                }
+                                            }
+                                        },
+
+                                        enabled = !isTakenToday,
+
+                                        modifier =
+                                            Modifier.fillMaxWidth()
+                                    ) {
+
+                                        Text(
+                                            if (isTakenToday) {
+                                                "✓ Taken today"
+                                            } else {
+                                                "Mark as taken"
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
 
                         Spacer(
-                            modifier = Modifier.height(4.dp)
+                            modifier =
+                                Modifier.height(4.dp)
                         )
 
+                        /*
+                         * SET SCHEDULE
+                         */
                         TextButton(
                             onClick = {
-                                onSetSchedule(medication)
+                                onSetSchedule(
+                                    medication
+                                )
                             }
                         ) {
                             Text("Set schedule")
@@ -845,15 +1120,357 @@ fun AddMedicationScreen(
             }
         }
 
+        /*
+         * EDIT MEDICATION DIALOG
+         */
+        if (showEditDialog) {
+
+            AlertDialog(
+                onDismissRequest = {
+
+                    showEditDialog = false
+                    selectedMedication = null
+                    editError = ""
+                },
+
+                title = {
+                    Text("Edit Medication")
+                },
+
+                text = {
+
+                    Column {
+
+                        OutlinedTextField(
+                            value =
+                                editMedicationName,
+
+                            onValueChange = {
+
+                                editMedicationName =
+                                    it
+
+                                editError = ""
+                            },
+
+                            label = {
+                                Text("Medication Name")
+                            },
+
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(12.dp)
+                        )
+
+                        OutlinedTextField(
+                            value =
+                                editStrength,
+
+                            onValueChange = {
+
+                                editStrength =
+                                    it
+
+                                editError = ""
+                            },
+
+                            label = {
+                                Text("Strength")
+                            },
+
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(12.dp)
+                        )
+
+                        OutlinedTextField(
+                            value =
+                                editQuantity,
+
+                            onValueChange = {
+
+                                if (
+                                    it.isEmpty() ||
+                                    it.matches(
+                                        Regex(
+                                            "^\\d*\\.?\\d*$"
+                                        )
+                                    )
+                                ) {
+
+                                    editQuantity =
+                                        it
+
+                                    editError = ""
+                                }
+                            },
+
+                            label = {
+                                Text("Quantity")
+                            },
+
+                            keyboardOptions =
+                                KeyboardOptions(
+                                    keyboardType =
+                                        KeyboardType.Decimal
+                                ),
+
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(8.dp)
+                        )
+
+                        Text(
+                            text = "Quantity Unit",
+
+                            style =
+                                MaterialTheme
+                                    .typography
+                                    .labelLarge
+                        )
+
+                        Spacer(
+                            modifier =
+                                Modifier.height(4.dp)
+                        )
+
+                        Box(
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+
+                            Button(
+                                onClick = {
+
+                                    editQuantityUnitMenuExpanded =
+                                        true
+                                },
+
+                                modifier =
+                                    Modifier.fillMaxWidth()
+                            ) {
+
+                                Text(
+                                    editQuantityUnit
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded =
+                                    editQuantityUnitMenuExpanded,
+
+                                onDismissRequest = {
+
+                                    editQuantityUnitMenuExpanded =
+                                        false
+                                }
+                            ) {
+
+                                val units =
+                                    listOf(
+                                        "tablet",
+                                        "pill",
+                                        "capsule",
+                                        "softgel",
+                                        "mL",
+                                        "drop",
+                                        "puff",
+                                        "injection",
+                                        "packet",
+                                        "suppository",
+                                        "tsp",
+                                        "tbsp",
+                                        "other"
+                                    )
+
+                                units.forEach { unit ->
+
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(unit)
+                                        },
+
+                                        onClick = {
+
+                                            editQuantityUnit =
+                                                unit
+
+                                            editQuantityUnitMenuExpanded =
+                                                false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (
+                            editError.isNotEmpty()
+                        ) {
+
+                            Spacer(
+                                modifier =
+                                    Modifier.height(8.dp)
+                            )
+
+                            Text(
+                                text =
+                                    editError,
+
+                                color =
+                                    MaterialTheme
+                                        .colorScheme
+                                        .error,
+
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall
+                            )
+                        }
+                    }
+                },
+
+                confirmButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            val medication =
+                                selectedMedication
+
+                            val quantityValue =
+                                editQuantity
+                                    .trim()
+                                    .toDoubleOrNull()
+
+                            if (
+                                medication == null
+                            ) {
+
+                                editError =
+                                    "Medication not found."
+
+                                return@TextButton
+                            }
+
+                            if (
+                                editMedicationName
+                                    .isBlank()
+                            ) {
+
+                                editError =
+                                    "Please enter a medication name."
+
+                                return@TextButton
+                            }
+
+                            if (
+                                editStrength
+                                    .isBlank()
+                            ) {
+
+                                editError =
+                                    "Please enter the strength."
+
+                                return@TextButton
+                            }
+
+                            if (
+                                quantityValue == null ||
+                                quantityValue < 0.0
+                            ) {
+
+                                editError =
+                                    "Please enter a valid quantity."
+
+                                return@TextButton
+                            }
+
+                            scope.launch {
+
+                                repository
+                                    .updateMedication(
+                                        medicationId =
+                                            medication.id,
+
+                                        name =
+                                            editMedicationName
+                                                .trim(),
+
+                                        strength =
+                                            editStrength
+                                                .trim(),
+
+                                        quantity =
+                                            quantityValue,
+
+                                        quantityUnit =
+                                            editQuantityUnit
+                                    )
+
+                                showEditDialog =
+                                    false
+
+                                selectedMedication =
+                                    null
+
+                                editError = ""
+
+                                savedMessage =
+                                    "Medication updated successfully."
+                            }
+                        }
+                    ) {
+                        Text("Save")
+                    }
+                },
+
+                dismissButton = {
+
+                    TextButton(
+                        onClick = {
+
+                            showEditDialog =
+                                false
+
+                            selectedMedication =
+                                null
+
+                            editError = ""
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        /*
+         * SUSPEND MEDICATION DIALOG
+         */
         if (showSuspendDialog) {
 
             AlertDialog(
                 onDismissRequest = {
                     showSuspendDialog = false
                 },
+
                 title = {
                     Text("Suspend medication")
                 },
+
                 text = {
 
                     Column {
@@ -871,45 +1488,61 @@ fun AddMedicationScreen(
                         OutlinedTextField(
                             value =
                                 suspensionReason,
+
                             onValueChange = {
 
-                                suspensionReason = it
+                                suspensionReason =
+                                    it
 
                                 if (
-                                    suspensionError.isNotEmpty()
+                                    suspensionError
+                                        .isNotEmpty()
                                 ) {
-                                    suspensionError = ""
+
+                                    suspensionError =
+                                        ""
                                 }
                             },
+
                             label = {
                                 Text("Reason")
                             },
+
                             isError =
-                                suspensionError.isNotEmpty(),
+                                suspensionError
+                                    .isNotEmpty(),
+
                             supportingText = {
 
                                 if (
-                                    suspensionError.isNotEmpty()
+                                    suspensionError
+                                        .isNotEmpty()
                                 ) {
+
                                     Text(
                                         suspensionError
                                     )
                                 }
                             },
+
                             modifier =
                                 Modifier.fillMaxWidth()
                         )
                     }
                 },
+
                 confirmButton = {
 
                     TextButton(
                         onClick = {
 
                             val reason =
-                                suspensionReason.trim()
+                                suspensionReason
+                                    .trim()
 
-                            if (reason.isBlank()) {
+                            if (
+                                reason.isBlank()
+                            ) {
 
                                 suspensionError =
                                     "Please enter a reason."
@@ -925,8 +1558,10 @@ fun AddMedicationScreen(
                                             .suspendMedication(
                                                 medicationId =
                                                     medication.id,
+
                                                 reason =
                                                     reason,
+
                                                 suspendedAt =
                                                     System
                                                         .currentTimeMillis()
@@ -951,6 +1586,7 @@ fun AddMedicationScreen(
                         Text("Suspend")
                     }
                 },
+
                 dismissButton = {
 
                     TextButton(
@@ -965,18 +1601,28 @@ fun AddMedicationScreen(
             )
         }
 
+        /*
+         * RESUME MEDICATION DIALOG
+         */
         if (showResumeDialog) {
 
             AlertDialog(
                 onDismissRequest = {
 
-                    showResumeDialog = false
-                    selectedSuspensionId = null
-                    selectedMedication = null
+                    showResumeDialog =
+                        false
+
+                    selectedSuspensionId =
+                        null
+
+                    selectedMedication =
+                        null
                 },
+
                 title = {
                     Text("Resume medication")
                 },
+
                 text = {
 
                     Text(
@@ -987,6 +1633,7 @@ fun AddMedicationScreen(
                             }?"
                     )
                 },
+
                 confirmButton = {
 
                     TextButton(
@@ -1009,8 +1656,10 @@ fun AddMedicationScreen(
                                         .resumeMedication(
                                             medicationId =
                                                 medication.id,
+
                                             suspensionId =
                                                 suspensionId,
+
                                             resumedAt =
                                                 System
                                                     .currentTimeMillis()
@@ -1031,14 +1680,20 @@ fun AddMedicationScreen(
                         Text("Resume")
                     }
                 },
+
                 dismissButton = {
 
                     TextButton(
                         onClick = {
 
-                            showResumeDialog = false
-                            selectedSuspensionId = null
-                            selectedMedication = null
+                            showResumeDialog =
+                                false
+
+                            selectedSuspensionId =
+                                null
+
+                            selectedMedication =
+                                null
                         }
                     ) {
                         Text("Cancel")
@@ -1073,15 +1728,22 @@ fun InventoryStatusBadge(
     Surface(
         color =
             statusColor.copy(alpha = 0.12f),
+
         shape =
             RoundedCornerShape(50)
     ) {
 
         Text(
             text = status,
-            color = statusColor,
+
+            color =
+                statusColor,
+
             style =
-                MaterialTheme.typography.labelMedium,
+                MaterialTheme
+                    .typography
+                    .labelMedium,
+
             modifier =
                 Modifier.padding(
                     horizontal = 12.dp,

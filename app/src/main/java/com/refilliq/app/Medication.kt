@@ -13,7 +13,7 @@ data class Medication(
 
     val strength: String,
 
-    val quantity: String,
+    val quantity: Double,
 
     val quantityUnit: String,
 

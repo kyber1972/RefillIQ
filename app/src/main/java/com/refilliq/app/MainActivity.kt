@@ -100,9 +100,202 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
 }
 
 
+val MIGRATION_6_7 = object : Migration(6, 7) {
+
+    override fun migrate(
+        db: SupportSQLiteDatabase
+    ) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS medication_doses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                medicationId INTEGER NOT NULL,
+                scheduleId INTEGER,
+                dose TEXT NOT NULL,
+                doseUnit TEXT NOT NULL,
+                takenAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+
+val MIGRATION_7_8 = object : Migration(7, 8) {
+
+    override fun migrate(
+        db: SupportSQLiteDatabase
+    ) {
+
+        // ---------------------------------------------------------
+        // medications
+        // quantity: TEXT -> REAL
+        // ---------------------------------------------------------
+
+        db.execSQL(
+            """
+            CREATE TABLE medications_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                name TEXT NOT NULL,
+                strength TEXT NOT NULL,
+                quantity REAL NOT NULL,
+                quantityUnit TEXT NOT NULL,
+                status TEXT NOT NULL,
+                suspensionReason TEXT NOT NULL,
+                suspendedAt INTEGER
+            )
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            INSERT INTO medications_new (
+                id,
+                name,
+                strength,
+                quantity,
+                quantityUnit,
+                status,
+                suspensionReason,
+                suspendedAt
+            )
+            SELECT
+                id,
+                name,
+                strength,
+                CAST(quantity AS REAL),
+                quantityUnit,
+                status,
+                suspensionReason,
+                suspendedAt
+            FROM medications
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            DROP TABLE medications
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            ALTER TABLE medications_new
+            RENAME TO medications
+            """.trimIndent()
+        )
+
+
+        // ---------------------------------------------------------
+        // medication_schedules
+        // dose: TEXT -> REAL
+        // ---------------------------------------------------------
+
+        db.execSQL(
+            """
+            CREATE TABLE medication_schedules_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                medicationId INTEGER NOT NULL,
+                dose REAL NOT NULL,
+                doseUnit TEXT NOT NULL,
+                time TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            INSERT INTO medication_schedules_new (
+                id,
+                medicationId,
+                dose,
+                doseUnit,
+                time
+            )
+            SELECT
+                id,
+                medicationId,
+                CAST(dose AS REAL),
+                doseUnit,
+                time
+            FROM medication_schedules
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            DROP TABLE medication_schedules
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            ALTER TABLE medication_schedules_new
+            RENAME TO medication_schedules
+            """.trimIndent()
+        )
+
+
+        // ---------------------------------------------------------
+        // medication_doses
+        // dose: TEXT -> REAL
+        // ---------------------------------------------------------
+
+        db.execSQL(
+            """
+            CREATE TABLE medication_doses_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                medicationId INTEGER NOT NULL,
+                scheduleId INTEGER,
+                dose REAL NOT NULL,
+                doseUnit TEXT NOT NULL,
+                takenAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            INSERT INTO medication_doses_new (
+                id,
+                medicationId,
+                scheduleId,
+                dose,
+                doseUnit,
+                takenAt
+            )
+            SELECT
+                id,
+                medicationId,
+                scheduleId,
+                CAST(dose AS REAL),
+                doseUnit,
+                takenAt
+            FROM medication_doses
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            DROP TABLE medication_doses
+            """.trimIndent()
+        )
+
+        db.execSQL(
+            """
+            ALTER TABLE medication_doses_new
+            RENAME TO medication_doses
+            """.trimIndent()
+        )
+    }
+}
+
+
 class MainActivity : ComponentActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
         val database = Room.databaseBuilder(
@@ -114,14 +307,17 @@ class MainActivity : ComponentActivity() {
                 MIGRATION_1_2,
                 MIGRATION_2_3,
                 MIGRATION_3_4,
-                MIGRATION_4_5
+                MIGRATION_4_5,
+                MIGRATION_6_7,
+                MIGRATION_7_8
             )
             .build()
 
         val repository = MedicationRepository(
             database.medicationDao(),
             database.suspensionHistoryDao(),
-            database.medicationScheduleDao()
+            database.medicationScheduleDao(),
+            database.medicationDoseDao()
         )
 
         setContent {
@@ -136,17 +332,40 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf<Medication?>(null)
                 }
 
+                var doseHistoryMedication by remember {
+                    mutableStateOf<Medication?>(null)
+                }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
 
                     when {
 
+                        doseHistoryMedication != null -> {
+
+                            MedicationDoseHistoryScreen(
+                                medication =
+                                    doseHistoryMedication!!,
+
+                                repository =
+                                    repository,
+
+                                onBack = {
+                                    doseHistoryMedication = null
+                                }
+                            )
+                        }
+
                         historyMedication != null -> {
 
                             MedicationHistoryScreen(
-                                medication = historyMedication!!,
-                                repository = repository,
+                                medication =
+                                    historyMedication!!,
+
+                                repository =
+                                    repository,
+
                                 onBack = {
                                     historyMedication = null
                                 }
@@ -155,17 +374,23 @@ class MainActivity : ComponentActivity() {
 
                         selectedMedication != null -> {
 
-                            val medication =
-                                selectedMedication!!
-
                             SetMedicationScheduleScreen(
-                                medicationId = medication.id,
-                                medicationName = medication.name,
-                                strength = medication.strength,
-                                repository = repository,
+                                medicationId =
+                                    selectedMedication!!.id,
+
+                                medicationName =
+                                    selectedMedication!!.name,
+
+                                strength =
+                                    selectedMedication!!.strength,
+
+                                repository =
+                                    repository,
+
                                 onSave = {
                                     selectedMedication = null
                                 },
+
                                 onCancel = {
                                     selectedMedication = null
                                 }
@@ -175,14 +400,25 @@ class MainActivity : ComponentActivity() {
                         else -> {
 
                             AddMedicationScreen(
-                                repository = repository,
+                                repository =
+                                    repository,
 
-                                onSetSchedule = { selected ->
-                                    selectedMedication = selected
+                                onSetSchedule = { medication ->
+
+                                    selectedMedication =
+                                        medication
                                 },
 
-                                onMedicationHistory = { selected ->
-                                    historyMedication = selected
+                                onMedicationHistory = { medication ->
+
+                                    historyMedication =
+                                        medication
+                                },
+
+                                onMedicationDoseHistory = { medication ->
+
+                                    doseHistoryMedication =
+                                        medication
                                 },
 
                                 modifier =

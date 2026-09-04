@@ -5,13 +5,32 @@ import kotlinx.coroutines.flow.Flow
 class MedicationRepository(
     private val medicationDao: MedicationDao,
     private val suspensionHistoryDao: SuspensionHistoryDao,
-    private val medicationScheduleDao: MedicationScheduleDao
+    private val medicationScheduleDao: MedicationScheduleDao,
+    private val medicationDoseDao: MedicationDoseDao
 ) {
 
     suspend fun insertMedication(
         medication: Medication
     ) {
-        medicationDao.insertMedication(medication)
+        medicationDao.insertMedication(
+            medication
+        )
+    }
+
+    suspend fun updateMedication(
+        medicationId: Int,
+        name: String,
+        strength: String,
+        quantity: Double,
+        quantityUnit: String
+    ) {
+        medicationDao.updateMedication(
+            medicationId = medicationId,
+            name = name,
+            strength = strength,
+            quantity = quantity,
+            quantityUnit = quantityUnit
+        )
     }
 
     fun getAllMedications(): Flow<List<Medication>> {
@@ -45,25 +64,33 @@ class MedicationRepository(
     suspend fun insertSuspension(
         suspension: SuspensionHistory
     ) {
-        suspensionHistoryDao.insertSuspension(suspension)
+        suspensionHistoryDao.insertSuspension(
+            suspension
+        )
     }
 
     suspend fun getSuspensionHistory(
         medicationId: Int
     ): List<SuspensionHistory> {
-        return suspensionHistoryDao.getSuspensionHistory(medicationId)
+        return suspensionHistoryDao.getSuspensionHistory(
+            medicationId
+        )
     }
 
     suspend fun insertSchedule(
         schedule: MedicationSchedule
     ) {
-        medicationScheduleDao.insertSchedule(schedule)
+        medicationScheduleDao.insertSchedule(
+            schedule
+        )
     }
 
     suspend fun updateSchedule(
         schedule: MedicationSchedule
     ) {
-        medicationScheduleDao.updateSchedule(schedule)
+        medicationScheduleDao.updateSchedule(
+            schedule
+        )
     }
 
     suspend fun hasScheduleAtTime(
@@ -100,16 +127,47 @@ class MedicationRepository(
         )
     }
 
-    suspend fun deleteMedication(
-        medicationId: Int
+    suspend fun insertDose(
+        dose: MedicationDose
     ) {
+        medicationDoseDao.insertDose(
+            dose
+        )
+    }
 
-        medicationScheduleDao.deleteSchedulesForMedication(
+    fun getDosesForMedication(
+        medicationId: Int
+    ): Flow<List<MedicationDose>> {
+        return medicationDoseDao.getDosesForMedication(
             medicationId
         )
+    }
 
-        medicationDao.deleteMedication(
+    suspend fun getLastDoseForMedication(
+        medicationId: Int
+    ): MedicationDose? {
+        return medicationDoseDao.getLastDoseForMedication(
             medicationId
+        )
+    }
+
+    suspend fun deleteDosesForMedication(
+        medicationId: Int
+    ) {
+        medicationDoseDao.deleteDosesForMedication(
+            medicationId
+        )
+    }
+
+    suspend fun countDoseForScheduleToday(
+        scheduleId: Int,
+        startOfDay: Long,
+        endOfDay: Long
+    ): Int {
+        return medicationDoseDao.countDoseForScheduleToday(
+            scheduleId = scheduleId,
+            startOfDay = startOfDay,
+            endOfDay = endOfDay
         )
     }
 }

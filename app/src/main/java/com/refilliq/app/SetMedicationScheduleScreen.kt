@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -21,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -38,7 +40,7 @@ import java.util.Calendar
 import java.util.Locale
 
 data class ScheduleItem(
-    val dose: String,
+    val dose: Double,
     val doseUnit: String,
     val time: String
 )
@@ -56,73 +58,205 @@ fun SetMedicationScheduleScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val dose = remember {
+    /*
+     * ---------------------------------------------------------
+     * FORM STATE
+     * ---------------------------------------------------------
+     *
+     * Dose se mantiene como String en el TextField.
+     * Se convierte a Double únicamente al guardar.
+     */
+
+    var doseText by remember {
         mutableStateOf("")
     }
 
-    val time = remember {
+    var selectedTime by remember {
         mutableStateOf("")
     }
 
-    val selectedUnit = remember {
+    var selectedUnit by remember {
         mutableStateOf("tablet")
     }
 
-    val unitMenuExpanded = remember {
+    var unitMenuExpanded by remember {
         mutableStateOf(false)
     }
 
+    /*
+     * Schedules que todavía no se han guardado en Room.
+     */
     val pendingSchedules = remember {
         mutableStateListOf<ScheduleItem>()
     }
 
+    /*
+     * Schedules existentes en Room.
+     */
     val existingSchedules by repository
         .getSchedulesForMedication(medicationId)
         .collectAsState(initial = emptyList())
 
-    val duplicateError = remember {
-        mutableStateOf("")
-    }
+    /*
+     * ---------------------------------------------------------
+     * EDIT STATE
+     * ---------------------------------------------------------
+     */
 
-    val editingScheduleId = remember {
+    var editingScheduleId by remember {
         mutableStateOf<Int?>(null)
     }
 
-    val editingPendingIndex = remember {
+    var editingPendingIndex by remember {
         mutableStateOf<Int?>(null)
     }
 
-    val originalTime = remember {
+    var originalTime by remember {
         mutableStateOf("")
     }
 
-    val canAddSchedule =
-        dose.value.isNotBlank() &&
-                time.value.isNotBlank()
+    /*
+     * ---------------------------------------------------------
+     * DIALOGS / MESSAGES
+     * ---------------------------------------------------------
+     */
+
+    var showDuplicateDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var takenMessage by remember {
+        mutableStateOf("")
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * TAKEN STATE
+     * ---------------------------------------------------------
+     */
+
+    var takenTodayIds by remember {
+        mutableStateOf<Set<Int>>(emptySet())
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * BUTTON STATE
+     * ---------------------------------------------------------
+     */
+
+    val canSaveSchedule =
+        doseText.isNotBlank() &&
+                selectedTime.isNotBlank()
 
     val isEditing =
-        editingScheduleId.value != null ||
-                editingPendingIndex.value != null
+        editingScheduleId != null ||
+                editingPendingIndex != null
+
+    /*
+     * ---------------------------------------------------------
+     * TODAY RANGE
+     * ---------------------------------------------------------
+     */
+
+    fun getTodayRange(): Pair<Long, Long> {
+
+        val startCalendar =
+            Calendar.getInstance().apply {
+
+                set(
+                    Calendar.HOUR_OF_DAY,
+                    0
+                )
+
+                set(
+                    Calendar.MINUTE,
+                    0
+                )
+
+                set(
+                    Calendar.SECOND,
+                    0
+                )
+
+                set(
+                    Calendar.MILLISECOND,
+                    0
+                )
+            }
+
+        val endCalendar =
+            startCalendar.clone() as Calendar
+
+        endCalendar.add(
+            Calendar.DAY_OF_YEAR,
+            1
+        )
+
+        return Pair(
+            startCalendar.timeInMillis,
+            endCalendar.timeInMillis
+        )
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * LOAD TAKEN STATUS
+     * ---------------------------------------------------------
+     */
+
+    LaunchedEffect(existingSchedules) {
+
+        val (startOfDay, endOfDay) =
+            getTodayRange()
+
+        val takenIds =
+            existingSchedules
+                .filter { schedule ->
+
+                    repository.countDoseForScheduleToday(
+                        scheduleId = schedule.id,
+                        startOfDay = startOfDay,
+                        endOfDay = endOfDay
+                    ) > 0
+                }
+                .map { schedule ->
+                    schedule.id
+                }
+                .toSet()
+
+        takenTodayIds = takenIds
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * TIME PICKER
+     * ---------------------------------------------------------
+     */
 
     fun showTimePicker(context: Context) {
 
-        val calendar = Calendar.getInstance()
+        val calendar =
+            Calendar.getInstance()
 
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
-        val minute = calendar.get(Calendar.MINUTE)
+        val hour =
+            calendar.get(Calendar.HOUR_OF_DAY)
+
+        val minute =
+            calendar.get(Calendar.MINUTE)
 
         TimePickerDialog(
             context,
             { _, selectedHour, selectedMinute ->
 
-                time.value = String.format(
-                    Locale.getDefault(),
-                    "%02d:%02d",
-                    selectedHour,
-                    selectedMinute
-                )
+                selectedTime =
+                    String.format(
+                        Locale.getDefault(),
+                        "%02d:%02d",
+                        selectedHour,
+                        selectedMinute
+                    )
 
-                duplicateError.value = ""
             },
             hour,
             minute,
@@ -130,17 +264,68 @@ fun SetMedicationScheduleScreen(
         ).show()
     }
 
-    fun clearEditing() {
+    /*
+     * ---------------------------------------------------------
+     * CLEAR FORM
+     * ---------------------------------------------------------
+     */
 
-        editingScheduleId.value = null
-        editingPendingIndex.value = null
-        originalTime.value = ""
+    fun clearForm() {
 
-        dose.value = ""
-        time.value = ""
-        selectedUnit.value = "tablet"
-        duplicateError.value = ""
+        doseText = ""
+        selectedTime = ""
+        selectedUnit = "tablet"
+
+        editingScheduleId = null
+        editingPendingIndex = null
+        originalTime = ""
+
+        takenMessage = ""
     }
+
+    /*
+     * ---------------------------------------------------------
+     * DUPLICATE SCHEDULE DIALOG
+     * ---------------------------------------------------------
+     */
+
+    if (showDuplicateDialog) {
+
+        AlertDialog(
+            onDismissRequest = {
+                showDuplicateDialog = false
+            },
+
+            title = {
+                Text(
+                    "Schedule already exists"
+                )
+            },
+
+            text = {
+                Text(
+                    "A schedule already exists for this time."
+                )
+            },
+
+            confirmButton = {
+
+                TextButton(
+                    onClick = {
+                        showDuplicateDialog = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * SCREEN
+     * ---------------------------------------------------------
+     */
 
     Column(
         modifier = Modifier
@@ -150,7 +335,10 @@ fun SetMedicationScheduleScreen(
 
         Text(
             text = "Set Medication Schedule",
-            style = MaterialTheme.typography.headlineSmall
+            style =
+                MaterialTheme
+                    .typography
+                    .headlineSmall
         )
 
         Spacer(
@@ -159,51 +347,82 @@ fun SetMedicationScheduleScreen(
 
         Text(
             text = medicationName,
-            style = MaterialTheme.typography.titleMedium
+            style =
+                MaterialTheme
+                    .typography
+                    .titleMedium
         )
 
         Text(
             text = strength,
-            style = MaterialTheme.typography.bodyMedium
+            style =
+                MaterialTheme
+                    .typography
+                    .bodyMedium
         )
 
         Spacer(
             modifier = Modifier.height(24.dp)
         )
 
+        /*
+         * -----------------------------------------------------
+         * DOSE
+         * -----------------------------------------------------
+         */
+
         OutlinedTextField(
-            value = dose.value,
+            value = doseText,
+
             onValueChange = { newValue ->
 
                 if (
                     newValue.isEmpty() ||
                     newValue.matches(
-                        Regex("^\\d*\\.?\\d*$")
+                        Regex(
+                            "^\\d*\\.?\\d*$"
+                        )
                     )
                 ) {
-                    dose.value = newValue
-                    duplicateError.value = ""
+
+                    doseText = newValue
                 }
             },
+
             label = {
                 Text("Dose")
             },
+
             placeholder = {
                 Text("Example: 1")
             },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal
-            ),
-            modifier = Modifier.fillMaxWidth()
+
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType =
+                        KeyboardType.Decimal
+                ),
+
+            modifier =
+                Modifier.fillMaxWidth()
         )
 
         Spacer(
             modifier = Modifier.height(12.dp)
         )
 
+        /*
+         * -----------------------------------------------------
+         * UNIT
+         * -----------------------------------------------------
+         */
+
         Text(
             text = "Unit",
-            style = MaterialTheme.typography.labelLarge
+            style =
+                MaterialTheme
+                    .typography
+                    .labelLarge
         )
 
         Spacer(
@@ -211,128 +430,160 @@ fun SetMedicationScheduleScreen(
         )
 
         Box(
-            modifier = Modifier.fillMaxWidth()
+            modifier =
+                Modifier.fillMaxWidth()
         ) {
 
             Button(
                 onClick = {
-                    unitMenuExpanded.value = true
+                    unitMenuExpanded = true
                 },
-                modifier = Modifier.fillMaxWidth()
+
+                modifier =
+                    Modifier.fillMaxWidth()
             ) {
+
                 Text(
-                    text = selectedUnit.value
+                    text = selectedUnit
                 )
             }
 
             DropdownMenu(
-                expanded = unitMenuExpanded.value,
+                expanded =
+                    unitMenuExpanded,
+
                 onDismissRequest = {
-                    unitMenuExpanded.value = false
+                    unitMenuExpanded = false
                 }
             ) {
 
                 DropdownMenuItem(
-                    text = { Text("Tablet") },
+                    text = {
+                        Text("Tablet")
+                    },
                     onClick = {
-                        selectedUnit.value = "tablet"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "tablet"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Pill") },
+                    text = {
+                        Text("Pill")
+                    },
                     onClick = {
-                        selectedUnit.value = "pill"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "pill"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Capsule") },
+                    text = {
+                        Text("Capsule")
+                    },
                     onClick = {
-                        selectedUnit.value = "capsule"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "capsule"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Softgel") },
+                    text = {
+                        Text("Softgel")
+                    },
                     onClick = {
-                        selectedUnit.value = "softgel"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "softgel"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("mL") },
+                    text = {
+                        Text("mL")
+                    },
                     onClick = {
-                        selectedUnit.value = "mL"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "mL"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("tsp") },
+                    text = {
+                        Text("tsp")
+                    },
                     onClick = {
-                        selectedUnit.value = "tsp"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "tsp"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("tbsp") },
+                    text = {
+                        Text("tbsp")
+                    },
                     onClick = {
-                        selectedUnit.value = "tbsp"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "tbsp"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Drop") },
+                    text = {
+                        Text("Drop")
+                    },
                     onClick = {
-                        selectedUnit.value = "drop"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "drop"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Puff") },
+                    text = {
+                        Text("Puff")
+                    },
                     onClick = {
-                        selectedUnit.value = "puff"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "puff"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Injection") },
+                    text = {
+                        Text("Injection")
+                    },
                     onClick = {
-                        selectedUnit.value = "injection"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "injection"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Packet") },
+                    text = {
+                        Text("Packet")
+                    },
                     onClick = {
-                        selectedUnit.value = "packet"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "packet"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Suppository") },
+                    text = {
+                        Text("Suppository")
+                    },
                     onClick = {
-                        selectedUnit.value = "suppository"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "suppository"
+                        unitMenuExpanded = false
                     }
                 )
 
                 DropdownMenuItem(
-                    text = { Text("Other") },
+                    text = {
+                        Text("Other")
+                    },
                     onClick = {
-                        selectedUnit.value = "other"
-                        unitMenuExpanded.value = false
+                        selectedUnit = "other"
+                        unitMenuExpanded = false
                     }
                 )
             }
@@ -341,6 +592,12 @@ fun SetMedicationScheduleScreen(
         Spacer(
             modifier = Modifier.height(16.dp)
         )
+
+        /*
+         * -----------------------------------------------------
+         * TIME
+         * -----------------------------------------------------
+         */
 
         Box(
             modifier = Modifier
@@ -351,30 +608,45 @@ fun SetMedicationScheduleScreen(
         ) {
 
             OutlinedTextField(
-                value = time.value,
+                value = selectedTime,
+
                 onValueChange = {},
+
                 readOnly = true,
+
                 enabled = false,
+
                 label = {
                     Text("Time")
                 },
+
                 placeholder = {
                     Text("Select time")
                 },
-                modifier = Modifier.fillMaxWidth()
+
+                modifier =
+                    Modifier.fillMaxWidth()
             )
         }
 
-        if (duplicateError.value.isNotEmpty()) {
+        if (takenMessage.isNotEmpty()) {
 
             Spacer(
                 modifier = Modifier.height(8.dp)
             )
 
             Text(
-                text = duplicateError.value,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
+                text = takenMessage,
+
+                color =
+                    MaterialTheme
+                        .colorScheme
+                        .primary,
+
+                style =
+                    MaterialTheme
+                        .typography
+                        .bodySmall
             )
         }
 
@@ -382,102 +654,193 @@ fun SetMedicationScheduleScreen(
             modifier = Modifier.height(16.dp)
         )
 
+        /*
+         * -----------------------------------------------------
+         * ADD / UPDATE BUTTON
+         * -----------------------------------------------------
+         */
+
         Button(
+
             onClick = {
 
                 scope.launch {
 
-                    val selectedTime = time.value.trim()
+                    val selectedTimeValue =
+                        selectedTime.trim()
+
+                    val doseValue =
+                        doseText
+                            .trim()
+                            .toDoubleOrNull()
+
+                    /*
+                     * Invalid dose.
+                     */
+                    if (
+                        doseValue == null ||
+                        doseValue <= 0.0
+                    ) {
+                        return@launch
+                    }
 
                     val editingExisting =
-                        editingScheduleId.value != null
+                        editingScheduleId != null
 
                     val editingPending =
-                        editingPendingIndex.value != null
+                        editingPendingIndex != null
 
                     val timeChanged =
-                        selectedTime != originalTime.value
+                        selectedTimeValue !=
+                                originalTime
 
+                    /*
+                     * Check database duplicates.
+                     */
                     val alreadyExistsInDatabase =
                         if (
                             editingExisting &&
                             !timeChanged
                         ) {
+
                             false
+
                         } else {
+
                             repository.hasScheduleAtTime(
-                                medicationId = medicationId,
-                                time = selectedTime
+                                medicationId =
+                                    medicationId,
+
+                                time =
+                                    selectedTimeValue
                             )
                         }
 
+                    /*
+                     * Check pending duplicates.
+                     */
                     val alreadyExistsInPending =
-                        pendingSchedules.anyIndexed { index, schedule ->
+                        pendingSchedules.anyIndexed {
+                                index,
+                                schedule ->
 
                             val isCurrentPending =
                                 editingPending &&
-                                        editingPendingIndex.value == index
+                                        editingPendingIndex ==
+                                        index
 
                             !isCurrentPending &&
-                                    schedule.time == selectedTime
+                                    schedule.time ==
+                                    selectedTimeValue
                         }
 
+                    /*
+                     * Duplicate.
+                     */
                     if (
                         alreadyExistsInDatabase ||
                         alreadyExistsInPending
                     ) {
 
-                        duplicateError.value =
-                            "A schedule already exists for this time."
+                        showDuplicateDialog = true
+
+                        return@launch
+                    }
+
+                    /*
+                     * -------------------------------------------------
+                     * UPDATE EXISTING DATABASE SCHEDULE
+                     * -------------------------------------------------
+                     */
+
+                    if (
+                        editingScheduleId != null
+                    ) {
+
+                        val updatedSchedule =
+                            MedicationSchedule(
+
+                                id =
+                                    editingScheduleId!!,
+
+                                medicationId =
+                                    medicationId,
+
+                                dose =
+                                    doseValue,
+
+                                doseUnit =
+                                    selectedUnit,
+
+                                time =
+                                    selectedTimeValue
+                            )
+
+                        repository.updateSchedule(
+                            updatedSchedule
+                        )
+
+                        clearForm()
+
+                        /*
+                         * -------------------------------------------------
+                         * UPDATE PENDING SCHEDULE
+                         * -------------------------------------------------
+                         */
+
+                    } else if (
+                        editingPendingIndex != null
+                    ) {
+
+                        val index =
+                            editingPendingIndex!!
+
+                        pendingSchedules[index] =
+                            ScheduleItem(
+
+                                dose =
+                                    doseValue,
+
+                                doseUnit =
+                                    selectedUnit,
+
+                                time =
+                                    selectedTimeValue
+                            )
+
+                        clearForm()
+
+                        /*
+                         * -------------------------------------------------
+                         * ADD NEW PENDING SCHEDULE
+                         * -------------------------------------------------
+                         */
 
                     } else {
 
-                        if (editingScheduleId.value != null) {
+                        pendingSchedules.add(
+                            ScheduleItem(
 
-                            val updatedSchedule =
-                                MedicationSchedule(
-                                    id = editingScheduleId.value!!,
-                                    medicationId = medicationId,
-                                    dose = dose.value.trim(),
-                                    doseUnit = selectedUnit.value,
-                                    time = selectedTime
-                                )
+                                dose =
+                                    doseValue,
 
-                            repository.updateSchedule(
-                                updatedSchedule
+                                doseUnit =
+                                    selectedUnit,
+
+                                time =
+                                    selectedTimeValue
                             )
+                        )
 
-                        } else if (
-                            editingPendingIndex.value != null
-                        ) {
-
-                            val index =
-                                editingPendingIndex.value!!
-
-                            pendingSchedules[index] =
-                                ScheduleItem(
-                                    dose = dose.value.trim(),
-                                    doseUnit = selectedUnit.value,
-                                    time = selectedTime
-                                )
-
-                        } else {
-
-                            pendingSchedules.add(
-                                ScheduleItem(
-                                    dose = dose.value.trim(),
-                                    doseUnit = selectedUnit.value,
-                                    time = selectedTime
-                                )
-                            )
-                        }
-
-                        clearEditing()
+                        clearForm()
                     }
                 }
             },
-            enabled = canAddSchedule
+
+            enabled =
+                canSaveSchedule
         ) {
+
             Text(
                 if (isEditing) {
                     "Update schedule"
@@ -491,9 +854,18 @@ fun SetMedicationScheduleScreen(
             modifier = Modifier.height(24.dp)
         )
 
+        /*
+         * ---------------------------------------------------------
+         * SCHEDULES
+         * ---------------------------------------------------------
+         */
+
         Text(
             text = "Schedules",
-            style = MaterialTheme.typography.titleMedium
+            style =
+                MaterialTheme
+                    .typography
+                    .titleMedium
         )
 
         Spacer(
@@ -501,102 +873,273 @@ fun SetMedicationScheduleScreen(
         )
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
         ) {
+
+            /*
+             * =====================================================
+             * EXISTING SCHEDULES
+             * =====================================================
+             */
 
             existingSchedules.forEach { schedule ->
 
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                vertical = 4.dp
+                            )
                 ) {
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement =
-                            Arrangement.SpaceBetween
+                    Column(
+                        modifier =
+                            Modifier.padding(16.dp)
                     ) {
 
-                        Column {
+                        Row(
+                            modifier =
+                                Modifier.fillMaxWidth(),
 
-                            Text(
-                                text = schedule.time,
-                                style =
-                                    MaterialTheme.typography.bodyLarge
-                            )
+                            horizontalArrangement =
+                                Arrangement.SpaceBetween
+                        ) {
 
-                            Text(
-                                text =
-                                    "${schedule.dose} ${schedule.doseUnit}",
-                                style =
-                                    MaterialTheme.typography.bodyMedium
-                            )
+                            Column {
+
+                                Text(
+                                    text =
+                                        schedule.time,
+
+                                    style =
+                                        MaterialTheme
+                                            .typography
+                                            .bodyLarge
+                                )
+
+                                Text(
+                                    text =
+                                        "${schedule.dose} ${schedule.doseUnit}",
+
+                                    style =
+                                        MaterialTheme
+                                            .typography
+                                            .bodyMedium
+                                )
+                            }
+
+                            Row {
+
+                                /*
+                                 * -------------------------------------------------
+                                 * EDIT EXISTING SCHEDULE
+                                 * -------------------------------------------------
+                                 */
+
+                                TextButton(
+
+                                    onClick = {
+
+                                        /*
+                                         * Explicitly load ALL fields.
+                                         *
+                                         * Double -> String
+                                         */
+                                        doseText =
+                                            schedule.dose
+                                                .toString()
+
+                                        selectedUnit =
+                                            schedule.doseUnit
+
+                                        selectedTime =
+                                            schedule.time
+
+                                        originalTime =
+                                            schedule.time
+
+                                        editingScheduleId =
+                                            schedule.id
+
+                                        editingPendingIndex =
+                                            null
+
+                                        takenMessage = ""
+                                    }
+                                ) {
+
+                                    Text("Edit")
+                                }
+
+                                /*
+                                 * -------------------------------------------------
+                                 * DELETE
+                                 * -------------------------------------------------
+                                 */
+
+                                TextButton(
+
+                                    onClick = {
+
+                                        scope.launch {
+
+                                            repository.deleteSchedule(
+                                                scheduleId =
+                                                    schedule.id
+                                            )
+
+                                            takenTodayIds =
+                                                takenTodayIds -
+                                                        schedule.id
+                                        }
+                                    }
+                                ) {
+
+                                    Text("Delete")
+                                }
+                            }
                         }
 
-                        Row {
+                        Spacer(
+                            modifier =
+                                Modifier.height(8.dp)
+                        )
 
-                            TextButton(
-                                onClick = {
+                        /*
+                         * -------------------------------------------------
+                         * TAKEN STATUS
+                         * -------------------------------------------------
+                         */
 
-                                    dose.value =
-                                        schedule.dose
+                        val isTakenToday =
+                            takenTodayIds.contains(
+                                schedule.id
+                            )
 
-                                    selectedUnit.value =
-                                        schedule.doseUnit
+                        /*
+                         * -------------------------------------------------
+                         * TAKEN BUTTON
+                         * -------------------------------------------------
+                         */
 
-                                    time.value =
-                                        schedule.time
+                        Button(
 
-                                    originalTime.value =
-                                        schedule.time
+                            onClick = {
 
-                                    editingScheduleId.value =
-                                        schedule.id
+                                scope.launch {
 
-                                    editingPendingIndex.value =
-                                        null
+                                    val (
+                                        startOfDay,
+                                        endOfDay
+                                    ) =
+                                        getTodayRange()
 
-                                    duplicateError.value = ""
-                                }
-                            ) {
-                                Text("Edit")
-                            }
+                                    val alreadyTaken =
+                                        repository
+                                            .countDoseForScheduleToday(
 
-                            TextButton(
-                                onClick = {
+                                                scheduleId =
+                                                    schedule.id,
 
-                                    scope.launch {
+                                                startOfDay =
+                                                    startOfDay,
 
-                                        repository.deleteSchedule(
-                                            scheduleId = schedule.id
+                                                endOfDay =
+                                                    endOfDay
+                                            ) > 0
+
+                                    if (alreadyTaken) {
+
+                                        takenTodayIds =
+                                            takenTodayIds +
+                                                    schedule.id
+
+                                        takenMessage =
+                                            "${schedule.time} dose was already marked as taken today."
+
+                                    } else {
+
+                                        repository.insertDose(
+
+                                            MedicationDose(
+
+                                                medicationId =
+                                                    medicationId,
+
+                                                scheduleId =
+                                                    schedule.id,
+
+                                                dose =
+                                                    schedule.dose,
+
+                                                doseUnit =
+                                                    schedule.doseUnit,
+
+                                                takenAt =
+                                                    System
+                                                        .currentTimeMillis()
+                                            )
                                         )
+
+                                        takenTodayIds =
+                                            takenTodayIds +
+                                                    schedule.id
+
+                                        takenMessage =
+                                            "${schedule.time} dose marked as taken."
                                     }
                                 }
-                            ) {
-                                Text("Delete")
-                            }
+                            },
+
+                            enabled =
+                                !isTakenToday,
+
+                            modifier =
+                                Modifier.fillMaxWidth()
+                        ) {
+
+                            Text(
+
+                                if (isTakenToday) {
+                                    "✓ Taken today"
+                                } else {
+                                    "Mark as taken"
+                                }
+                            )
                         }
                     }
                 }
             }
 
-            pendingSchedules.forEachIndexed { index, schedule ->
+            /*
+             * =====================================================
+             * PENDING SCHEDULES
+             * =====================================================
+             */
+
+            pendingSchedules.forEachIndexed {
+                    index,
+                    schedule ->
 
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                vertical = 4.dp
+                            )
                 ) {
 
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+
                         horizontalArrangement =
                             Arrangement.SpaceBetween
                     ) {
@@ -604,49 +1147,66 @@ fun SetMedicationScheduleScreen(
                         Column {
 
                             Text(
-                                text = schedule.time,
+                                text =
+                                    schedule.time,
+
                                 style =
-                                    MaterialTheme.typography.bodyLarge
+                                    MaterialTheme
+                                        .typography
+                                        .bodyLarge
                             )
 
                             Text(
                                 text =
                                     "${schedule.dose} ${schedule.doseUnit}",
+
                                 style =
-                                    MaterialTheme.typography.bodyMedium
+                                    MaterialTheme
+                                        .typography
+                                        .bodyMedium
                             )
 
                             Text(
                                 text = "New",
+
                                 style =
-                                    MaterialTheme.typography.labelMedium
+                                    MaterialTheme
+                                        .typography
+                                        .labelMedium
                             )
                         }
 
+                        /*
+                         * EDIT PENDING
+                         */
+
                         TextButton(
+
                             onClick = {
 
-                                dose.value =
+                                doseText =
                                     schedule.dose
+                                        .toString()
 
-                                selectedUnit.value =
+                                selectedUnit =
                                     schedule.doseUnit
 
-                                time.value =
+                                selectedTime =
                                     schedule.time
 
-                                originalTime.value =
+                                originalTime =
                                     schedule.time
 
-                                editingPendingIndex.value =
+                                editingPendingIndex =
                                     index
 
-                                editingScheduleId.value =
+                                editingScheduleId =
                                     null
 
-                                duplicateError.value = ""
+                                takenMessage = ""
                             }
                         ) {
+
                             Text("Edit")
                         }
                     }
@@ -654,9 +1214,18 @@ fun SetMedicationScheduleScreen(
             }
         }
 
+        /*
+         * ---------------------------------------------------------
+         * BOTTOM BUTTONS
+         * ---------------------------------------------------------
+         */
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            modifier =
+                Modifier.fillMaxWidth(),
+
+            horizontalArrangement =
+                Arrangement.End
         ) {
 
             TextButton(
@@ -664,26 +1233,41 @@ fun SetMedicationScheduleScreen(
                     onCancel()
                 }
             ) {
+
                 Text("Cancel")
             }
 
             Spacer(
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier =
+                    Modifier.padding(
+                        horizontal = 4.dp
+                    )
             )
 
             Button(
+
                 onClick = {
 
                     scope.launch {
 
-                        pendingSchedules.forEach { schedule ->
+                        pendingSchedules.forEach {
+                                schedule ->
 
                             repository.insertSchedule(
+
                                 MedicationSchedule(
-                                    medicationId = medicationId,
-                                    dose = schedule.dose,
-                                    doseUnit = schedule.doseUnit,
-                                    time = schedule.time
+
+                                    medicationId =
+                                        medicationId,
+
+                                    dose =
+                                        schedule.dose,
+
+                                    doseUnit =
+                                        schedule.doseUnit,
+
+                                    time =
+                                        schedule.time
                                 )
                             )
                         }
@@ -691,8 +1275,11 @@ fun SetMedicationScheduleScreen(
                         onSave()
                     }
                 },
-                enabled = pendingSchedules.isNotEmpty()
+
+                enabled =
+                    pendingSchedules.isNotEmpty()
             ) {
+
                 Text("Save schedule")
             }
         }
@@ -705,7 +1292,12 @@ private inline fun <T> List<T>.anyIndexed(
 
     for (index in indices) {
 
-        if (predicate(index, this[index])) {
+        if (
+            predicate(
+                index,
+                this[index]
+            )
+        ) {
             return true
         }
     }

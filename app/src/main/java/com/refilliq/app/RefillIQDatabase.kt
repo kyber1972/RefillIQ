@@ -7,9 +7,10 @@ import androidx.room.RoomDatabase
     entities = [
         Medication::class,
         SuspensionHistory::class,
-        MedicationSchedule::class
+        MedicationSchedule::class,
+        MedicationDose::class
     ],
-    version = 6
+    version = 8
 )
 abstract class RefillIQDatabase : RoomDatabase() {
 
@@ -18,4 +19,6 @@ abstract class RefillIQDatabase : RoomDatabase() {
     abstract fun suspensionHistoryDao(): SuspensionHistoryDao
 
     abstract fun medicationScheduleDao(): MedicationScheduleDao
+
+    abstract fun medicationDoseDao(): MedicationDoseDao
 }

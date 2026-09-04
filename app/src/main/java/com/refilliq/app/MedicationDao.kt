@@ -14,6 +14,24 @@ interface MedicationDao {
         medication: Medication
     )
 
+    @Query(
+        """
+        UPDATE medications
+        SET name = :name,
+            strength = :strength,
+            quantity = :quantity,
+            quantityUnit = :quantityUnit
+        WHERE id = :medicationId
+        """
+    )
+    suspend fun updateMedication(
+        medicationId: Int,
+        name: String,
+        strength: String,
+        quantity: Double,
+        quantityUnit: String
+    )
+
     @Query("SELECT * FROM medications")
     fun getAllMedications(): Flow<List<Medication>>
 
