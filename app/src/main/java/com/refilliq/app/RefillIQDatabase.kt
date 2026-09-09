@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         MedicationDose::class,
         MedicationInventoryMovement::class
     ],
-    version = 9
+    version = 10
 )
 abstract class RefillIQDatabase : RoomDatabase() {
 
@@ -22,4 +22,6 @@ abstract class RefillIQDatabase : RoomDatabase() {
     abstract fun medicationScheduleDao(): MedicationScheduleDao
 
     abstract fun medicationDoseDao(): MedicationDoseDao
+
+    abstract fun medicationInventoryMovementDao(): MedicationInventoryMovementDao
 }

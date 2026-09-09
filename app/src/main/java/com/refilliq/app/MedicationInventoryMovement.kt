@@ -15,5 +15,7 @@ data class MedicationInventoryMovement(
 
     val quantity: Double,
 
+    val reason: String,
+
     val createdAt: Long
 )

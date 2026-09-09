@@ -1,3 +1,4 @@
+
 package com.refilliq.app
 
 import android.os.Bundle
@@ -341,12 +342,16 @@ class MainActivity : ComponentActivity() {
             )
             .build()
 
+
         val repository = MedicationRepository(
+            database,
             database.medicationDao(),
             database.suspensionHistoryDao(),
             database.medicationScheduleDao(),
-            database.medicationDoseDao()
+            database.medicationDoseDao(),
+            database.medicationInventoryMovementDao()
         )
+
 
         setContent {
 
@@ -363,6 +368,11 @@ class MainActivity : ComponentActivity() {
                 var doseHistoryMedication by remember {
                     mutableStateOf<Medication?>(null)
                 }
+
+                var inventoryHistoryMedication by remember {
+                    mutableStateOf<Medication?>(null)
+                }
+
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
@@ -385,6 +395,23 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+
+                        inventoryHistoryMedication != null -> {
+
+                            MedicationInventoryHistoryScreen(
+                                medication =
+                                    inventoryHistoryMedication!!,
+
+                                repository =
+                                    repository,
+
+                                onBack = {
+                                    inventoryHistoryMedication = null
+                                }
+                            )
+                        }
+
+
                         historyMedication != null -> {
 
                             MedicationHistoryScreen(
@@ -399,6 +426,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
 
                         selectedMedication != null -> {
 
@@ -425,6 +453,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+
                         else -> {
 
                             AddMedicationScreen(
@@ -446,6 +475,12 @@ class MainActivity : ComponentActivity() {
                                 onMedicationDoseHistory = { medication ->
 
                                     doseHistoryMedication =
+                                        medication
+                                },
+
+                                onInventoryHistory = { medication ->
+
+                                    inventoryHistoryMedication =
                                         medication
                                 },
 

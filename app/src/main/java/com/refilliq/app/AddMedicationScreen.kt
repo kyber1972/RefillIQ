@@ -1,3 +1,4 @@
+
 package com.refilliq.app
 
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +45,7 @@ fun AddMedicationScreen(
     onSetSchedule: (Medication) -> Unit,
     onMedicationHistory: (Medication) -> Unit,
     onMedicationDoseHistory: (Medication) -> Unit,
+    onInventoryHistory: (Medication) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -575,6 +577,26 @@ fun AddMedicationScreen(
                                     )
 
                                     /*
+                                     * INVENTORY HISTORY
+                                     */
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "Inventory History"
+                                            )
+                                        },
+                                        onClick = {
+
+                                            menuExpanded =
+                                                false
+
+                                            onInventoryHistory(
+                                                medication
+                                            )
+                                        }
+                                    )
+
+                                    /*
                                      * RESUME / SUSPEND
                                      */
                                     if (isSuspended) {
@@ -764,7 +786,8 @@ fun AddMedicationScreen(
                         /*
                          * INVENTORY STATUS
                          *
-                         * Inventory is NOT changed yet.
+                         * Inventory is now updated when
+                         * a dose is marked as taken.
                          */
                         if (isSuspended) {
 
@@ -819,8 +842,7 @@ fun AddMedicationScreen(
                         }
 
                         Spacer(
-                            modifier =
-                                Modifier.height(16.dp)
+                            modifier = Modifier.height(16.dp)
                         )
 
                         /*
@@ -835,8 +857,7 @@ fun AddMedicationScreen(
                         )
 
                         Spacer(
-                            modifier =
-                                Modifier.height(4.dp)
+                            modifier = Modifier.height(4.dp)
                         )
 
                         if (schedules.isEmpty()) {
@@ -906,7 +927,8 @@ fun AddMedicationScreen(
                                  * this schedule today.
                                  *
                                  * There is intentionally NO
-                                 * "already taken" restriction.
+                                 * "already taken" restriction
+                                 * at the database level.
                                  */
                                 val takenTodayCount =
                                     doses.count { dose ->
@@ -1015,8 +1037,10 @@ fun AddMedicationScreen(
                                      * A schedule can be marked as taken
                                      * only once per day.
                                      *
-                                     * The dose history still keeps every
-                                     * previously recorded event.
+                                     * The actual inventory operation,
+                                     * inventory movement and dose event
+                                     * are now handled atomically by
+                                     * repository.recordTakenDose().
                                      */
                                     val isTakenToday =
                                         takenTodayCount > 0
@@ -1028,10 +1052,22 @@ fun AddMedicationScreen(
 
                                                 val startCalendar =
                                                     Calendar.getInstance().apply {
-                                                        set(Calendar.HOUR_OF_DAY, 0)
-                                                        set(Calendar.MINUTE, 0)
-                                                        set(Calendar.SECOND, 0)
-                                                        set(Calendar.MILLISECOND, 0)
+                                                        set(
+                                                            Calendar.HOUR_OF_DAY,
+                                                            0
+                                                        )
+                                                        set(
+                                                            Calendar.MINUTE,
+                                                            0
+                                                        )
+                                                        set(
+                                                            Calendar.SECOND,
+                                                            0
+                                                        )
+                                                        set(
+                                                            Calendar.MILLISECOND,
+                                                            0
+                                                        )
                                                     }
 
                                                 val todayStart =
@@ -1052,34 +1088,33 @@ fun AddMedicationScreen(
                                                     doses.any { dose ->
                                                         dose.scheduleId ==
                                                                 schedule.id &&
+
                                                                 dose.takenAt >=
                                                                 todayStart &&
+
                                                                 dose.takenAt <
                                                                 todayEnd
                                                     }
 
                                                 if (!alreadyTakenToday) {
 
-                                                    repository
-                                                        .insertDose(
-                                                            MedicationDose(
-                                                                medicationId =
-                                                                    medication.id,
+                                                    repository.recordTakenDose(
+                                                        medicationId =
+                                                            medication.id,
 
-                                                                scheduleId =
-                                                                    schedule.id,
+                                                        scheduleId =
+                                                            schedule.id,
 
-                                                                dose =
-                                                                    schedule.dose,
+                                                        dose =
+                                                            schedule.dose,
 
-                                                                doseUnit =
-                                                                    schedule.doseUnit,
+                                                        doseUnit =
+                                                            schedule.doseUnit,
 
-                                                                takenAt =
-                                                                    System
-                                                                        .currentTimeMillis()
-                                                            )
-                                                        )
+                                                        takenAt =
+                                                            System
+                                                                .currentTimeMillis()
+                                                    )
                                                 }
                                             }
                                         },
@@ -1103,8 +1138,7 @@ fun AddMedicationScreen(
                         }
 
                         Spacer(
-                            modifier =
-                                Modifier.height(4.dp)
+                            modifier = Modifier.height(4.dp)
                         )
 
                         /*
