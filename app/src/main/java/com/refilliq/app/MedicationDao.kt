@@ -90,6 +90,49 @@ interface MedicationDao {
         medicationId: Int
     )
 
+    /*
+     * Decreases medication inventory only when enough
+     * medication is available.
+     *
+     * This prevents the inventory from ever becoming negative.
+     *
+     * Returns:
+     *   1 = inventory successfully decreased
+     *   0 = insufficient inventory / nothing changed
+     */
+    @Query(
+        """
+        UPDATE medications
+        SET quantity = quantity - :dose
+        WHERE id = :medicationId
+        AND quantity >= :dose
+        """
+    )
+    suspend fun decreaseMedicationQuantity(
+        medicationId: Int,
+        dose: Double
+    ): Int
+
+    /*
+     * Increases medication inventory only for positive quantities.
+     *
+     * Returns:
+     *   1 = inventory successfully increased
+     *   0 = invalid quantity / nothing changed
+     */
+    @Query(
+        """
+        UPDATE medications
+        SET quantity = quantity + :dose
+        WHERE id = :medicationId
+        AND :dose > 0
+        """
+    )
+    suspend fun increaseMedicationQuantity(
+        medicationId: Int,
+        dose: Double
+    ): Int
+
     @Transaction
     suspend fun suspendMedicationWithHistory(
         medicationId: Int,

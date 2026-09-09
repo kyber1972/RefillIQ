@@ -1026,23 +1026,27 @@ fun AddMedicationScreen(
 
                                             scope.launch {
 
-                                                val calendar = Calendar.getInstance().apply {
-                                                    set(Calendar.HOUR_OF_DAY, 0)
-                                                    set(Calendar.MINUTE, 0)
-                                                    set(Calendar.SECOND, 0)
-                                                    set(Calendar.MILLISECOND, 0)
-                                                }
+                                                val startCalendar =
+                                                    Calendar.getInstance().apply {
+                                                        set(Calendar.HOUR_OF_DAY, 0)
+                                                        set(Calendar.MINUTE, 0)
+                                                        set(Calendar.SECOND, 0)
+                                                        set(Calendar.MILLISECOND, 0)
+                                                    }
 
                                                 val todayStart =
-                                                    calendar.timeInMillis
+                                                    startCalendar.timeInMillis
 
-                                                calendar.add(
+                                                val endCalendar =
+                                                    startCalendar.clone() as Calendar
+
+                                                endCalendar.add(
                                                     Calendar.DAY_OF_YEAR,
                                                     1
                                                 )
 
                                                 val todayEnd =
-                                                    calendar.timeInMillis
+                                                    endCalendar.timeInMillis
 
                                                 val alreadyTakenToday =
                                                     doses.any { dose ->

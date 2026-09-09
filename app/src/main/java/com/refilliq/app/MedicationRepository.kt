@@ -37,6 +37,26 @@ class MedicationRepository(
         return medicationDao.getAllMedications()
     }
 
+    suspend fun decreaseMedicationQuantity(
+        medicationId: Int,
+        dose: Double
+    ): Int {
+        return medicationDao.decreaseMedicationQuantity(
+            medicationId = medicationId,
+            dose = dose
+        )
+    }
+
+    suspend fun increaseMedicationQuantity(
+        medicationId: Int,
+        dose: Double
+    ) {
+        medicationDao.increaseMedicationQuantity(
+            medicationId = medicationId,
+            dose = dose
+        )
+    }
+
     suspend fun suspendMedication(
         medicationId: Int,
         reason: String,
