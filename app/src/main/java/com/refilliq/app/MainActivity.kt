@@ -22,6 +22,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(
         db: SupportSQLiteDatabase
     ) {
+
         db.execSQL(
             """
             ALTER TABLE medications
@@ -51,6 +52,7 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(
         db: SupportSQLiteDatabase
     ) {
+
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS suspension_history (
@@ -71,6 +73,7 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(
         db: SupportSQLiteDatabase
     ) {
+
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS medication_schedules (
@@ -90,6 +93,7 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(
         db: SupportSQLiteDatabase
     ) {
+
         db.execSQL(
             """
             ALTER TABLE medication_schedules
@@ -105,6 +109,7 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     override fun migrate(
         db: SupportSQLiteDatabase
     ) {
+
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS medication_doses (
@@ -291,11 +296,33 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
 }
 
 
+val MIGRATION_8_9 = object : Migration(8, 9) {
+
+    override fun migrate(
+        db: SupportSQLiteDatabase
+    ) {
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS medication_inventory_movements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                medicationId INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                quantity REAL NOT NULL,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
+
         super.onCreate(savedInstanceState)
 
         val database = Room.databaseBuilder(
@@ -309,7 +336,8 @@ class MainActivity : ComponentActivity() {
                 MIGRATION_3_4,
                 MIGRATION_4_5,
                 MIGRATION_6_7,
-                MIGRATION_7_8
+                MIGRATION_7_8,
+                MIGRATION_8_9
             )
             .build()
 
