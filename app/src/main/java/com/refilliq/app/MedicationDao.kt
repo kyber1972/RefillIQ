@@ -12,7 +12,7 @@ interface MedicationDao {
     @Insert
     suspend fun insertMedication(
         medication: Medication
-    )
+    ): Long
 
     @Query(
         """
@@ -90,16 +90,6 @@ interface MedicationDao {
         medicationId: Int
     )
 
-    /*
-     * Decreases medication inventory only when enough
-     * medication is available.
-     *
-     * This prevents the inventory from ever becoming negative.
-     *
-     * Returns:
-     *   1 = inventory successfully decreased
-     *   0 = insufficient inventory / nothing changed
-     */
     @Query(
         """
         UPDATE medications
@@ -113,13 +103,6 @@ interface MedicationDao {
         dose: Double
     ): Int
 
-    /*
-     * Increases medication inventory only for positive quantities.
-     *
-     * Returns:
-     *   1 = inventory successfully increased
-     *   0 = invalid quantity / nothing changed
-     */
     @Query(
         """
         UPDATE medications
@@ -139,7 +122,6 @@ interface MedicationDao {
         reason: String,
         suspendedAt: Long
     ) {
-
         suspendMedication(
             medicationId = medicationId,
             reason = reason,
@@ -161,7 +143,6 @@ interface MedicationDao {
         suspensionId: Int,
         resumedAt: Long
     ) {
-
         resumeMedication(
             medicationId = medicationId
         )

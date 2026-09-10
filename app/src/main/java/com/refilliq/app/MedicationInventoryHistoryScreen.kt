@@ -18,10 +18,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -156,21 +156,36 @@ fun MedicationInventoryHistoryScreen(
 
                     val quantityText =
                         when (movement.type) {
-                            "IN" -> "+${movement.quantity}"
+                            "OPENING_BALANCE" ->
+                                "+${movement.quantity}"
+
+                            "IN" ->
+                                "+${movement.quantity}"
+
                             "ADJUSTMENT" ->
                                 if (movement.quantity >= 0.0) {
                                     "+${movement.quantity}"
                                 } else {
                                     "${movement.quantity}"
                                 }
-                            else -> "-${movement.quantity}"
+
+                            else ->
+                                "-${movement.quantity}"
                         }
 
                     val movementType =
                         when (movement.type) {
-                            "IN" -> "IN"
-                            "ADJUSTMENT" -> "ADJUSTMENT"
-                            else -> "OUT"
+                            "OPENING_BALANCE" ->
+                                "OPENING BALANCE"
+
+                            "IN" ->
+                                "IN"
+
+                            "ADJUSTMENT" ->
+                                "ADJUSTMENT"
+
+                            else ->
+                                "OUT"
                         }
 
                     Card(
@@ -322,9 +337,7 @@ fun MedicationInventoryHistoryScreen(
                             correctionMessage = null
                         },
                         label = {
-                            Text(
-                                "Quantity"
-                            )
+                            Text("Quantity")
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -388,7 +401,8 @@ fun MedicationInventoryHistoryScreen(
                                     medicationId = medication.id,
                                     adjustment = adjustment,
                                     reason = "Inventory correction",
-                                    createdAt = System.currentTimeMillis()
+                                    createdAt =
+                                        System.currentTimeMillis()
                                 )
 
                             if (success) {

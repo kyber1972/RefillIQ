@@ -15,9 +15,26 @@ class MedicationRepository(
     suspend fun insertMedication(
         medication: Medication
     ) {
-        medicationDao.insertMedication(
-            medication
-        )
+        database.withTransaction {
+
+            val medicationId =
+                medicationDao.insertMedication(
+                    medication
+                )
+
+            if (medication.quantity > 0.0) {
+
+                medicationInventoryMovementDao.insertMovement(
+                    MedicationInventoryMovement(
+                        medicationId = medicationId.toInt(),
+                        type = "OPENING_BALANCE",
+                        quantity = medication.quantity,
+                        reason = "Initial inventory",
+                        createdAt = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
     }
 
     suspend fun updateMedication(
