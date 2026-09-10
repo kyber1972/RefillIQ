@@ -1,4 +1,3 @@
-
 package com.refilliq.app
 
 import androidx.compose.foundation.layout.Arrangement
@@ -120,6 +119,11 @@ fun AddMedicationScreen(
     var selectedMedication by remember {
         mutableStateOf<Medication?>(null)
     }
+
+    var showInventoryDialog by remember { mutableStateOf(false) }
+    var inventoryQuantity by remember { mutableStateOf("") }
+    var inventoryReason by remember { mutableStateOf("New refill") }
+    var inventoryError by remember { mutableStateOf("") }
 
     var selectedSuspensionId by remember {
         mutableStateOf<Int?>(null)
@@ -573,6 +577,21 @@ fun AddMedicationScreen(
                                             onMedicationDoseHistory(
                                                 medication
                                             )
+                                        }
+                                    )
+
+                                    /*
+                                     * ADD INVENTORY
+                                     */
+                                    DropdownMenuItem(
+                                        text = { Text("Add Inventory") },
+                                        onClick = {
+                                            menuExpanded = false
+                                            selectedMedication = medication
+                                            inventoryQuantity = ""
+                                            inventoryReason = "New refill"
+                                            inventoryError = ""
+                                            showInventoryDialog = true
                                         }
                                     )
 
@@ -1492,6 +1511,71 @@ fun AddMedicationScreen(
                         Text("Cancel")
                     }
                 }
+            )
+        }
+
+        /*
+         * ADD INVENTORY DIALOG
+         */
+        if (showInventoryDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showInventoryDialog = false
+                    selectedMedication = null
+                    inventoryQuantity = ""
+                    inventoryReason = "New refill"
+                    inventoryError = ""
+                },
+                title = { Text("Add Inventory") },
+                text = {
+                    Column {
+                        Text("Current inventory: ${selectedMedication?.quantity ?: 0.0} ${selectedMedication?.quantityUnit ?: ""}")
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = inventoryQuantity,
+                            onValueChange = { if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) { inventoryQuantity = it; inventoryError = "" } },
+                            label = { Text("Quantity") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text("Reason", style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.height(4.dp))
+                        var reasonMenuExpanded by remember { mutableStateOf(false) }
+                        Box(Modifier.fillMaxWidth()) {
+                            Button(onClick = { reasonMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) { Text(inventoryReason) }
+                            DropdownMenu(expanded = reasonMenuExpanded, onDismissRequest = { reasonMenuExpanded = false }) {
+                                listOf("New refill", "New prescription", "Transfer from another supply", "Inventory correction", "Other").forEach { reason ->
+                                    DropdownMenuItem(text = { Text(reason) }, onClick = { inventoryReason = reason; reasonMenuExpanded = false })
+                                }
+                            }
+                        }
+                        if (inventoryError.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(inventoryError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val medication = selectedMedication
+                        val value = inventoryQuantity.trim().replace(',', '.').toDoubleOrNull()
+                        if (medication == null) { inventoryError = "Medication not found."; return@TextButton }
+                        if (value == null || value <= 0.0) { inventoryError = "Please enter a quantity greater than zero."; return@TextButton }
+                        scope.launch {
+                            val success = repository.recordInventoryIn(medication.id, value, inventoryReason, System.currentTimeMillis())
+                            if (success) {
+                                showInventoryDialog = false
+                                selectedMedication = null
+                                inventoryQuantity = ""
+                                inventoryReason = "New refill"
+                                inventoryError = ""
+                                savedMessage = "Inventory added successfully."
+                            } else { inventoryError = "Unable to add inventory." }
+                        }
+                    }) { Text("Add") }
+                },
+                dismissButton = { TextButton(onClick = { showInventoryDialog = false; selectedMedication = null; inventoryQuantity = ""; inventoryReason = "New refill"; inventoryError = "" }) { Text("Cancel") } }
             )
         }
 

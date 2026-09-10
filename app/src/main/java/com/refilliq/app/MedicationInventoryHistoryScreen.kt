@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun MedicationInventoryHistoryScreen(
@@ -47,6 +48,10 @@ fun MedicationInventoryHistoryScreen(
         )
 
     val scope = rememberCoroutineScope()
+
+    var calculatedInventory by remember {
+        mutableStateOf<Double?>(null)
+    }
 
     var showCorrectionDialog by remember {
         mutableStateOf(false)
@@ -105,6 +110,89 @@ fun MedicationInventoryHistoryScreen(
                 "${medication.strength} • ${medication.quantityUnit}",
             style = MaterialTheme.typography.bodyMedium
         )
+
+        Spacer(
+            modifier = Modifier.height(16.dp)
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+
+                Text(
+                    text = "Inventory Integrity",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                Text(
+                    text =
+                        "Current inventory: " +
+                                "${medication.quantity} ${medication.quantityUnit}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(
+                    modifier = Modifier.height(4.dp)
+                )
+
+                Button(
+                    onClick = {
+
+                        scope.launch {
+
+                            calculatedInventory =
+                                repository.calculateInventoryFromHistory(
+                                    medicationId = medication.id
+                                )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Verify Inventory")
+                }
+
+                calculatedInventory?.let { calculated ->
+
+                    Spacer(
+                        modifier = Modifier.height(8.dp)
+                    )
+
+                    Text(
+                        text =
+                            "Calculated from history: " +
+                                    "$calculated ${medication.quantityUnit}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Spacer(
+                        modifier = Modifier.height(4.dp)
+                    )
+
+                    val matches =
+                        abs(
+                            medication.quantity - calculated
+                        ) < 0.000001
+
+                    Text(
+                        text =
+                            if (matches) {
+                                "Status: MATCH"
+                            } else {
+                                "Status: MISMATCH"
+                            },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
 
         Spacer(
             modifier = Modifier.height(16.dp)
@@ -407,6 +495,7 @@ fun MedicationInventoryHistoryScreen(
 
                             if (success) {
 
+                                calculatedInventory = null
                                 showCorrectionDialog = false
                                 correctionQuantity = ""
                                 correctionMessage = null

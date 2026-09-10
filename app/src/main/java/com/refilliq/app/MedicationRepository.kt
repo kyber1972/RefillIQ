@@ -235,6 +235,52 @@ class MedicationRepository(
         )
     }
 
+    /**
+     * Reconstructs the expected inventory from the complete
+     * inventory movement history.
+     *
+     * OPENING_BALANCE -> adds inventory
+     * IN               -> adds inventory
+     * OUT              -> removes inventory
+     * ADJUSTMENT       -> uses the signed quantity
+     */
+    suspend fun calculateInventoryFromHistory(
+        medicationId: Int
+    ): Double {
+
+        val movements =
+            medicationInventoryMovementDao
+                .getMovementsForMedicationOnce(
+                    medicationId
+                )
+
+        var inventory = 0.0
+
+        movements.forEach { movement ->
+
+            when (movement.type) {
+
+                "OPENING_BALANCE" -> {
+                    inventory += movement.quantity
+                }
+
+                "IN" -> {
+                    inventory += movement.quantity
+                }
+
+                "OUT" -> {
+                    inventory -= movement.quantity
+                }
+
+                "ADJUSTMENT" -> {
+                    inventory += movement.quantity
+                }
+            }
+        }
+
+        return inventory
+    }
+
     suspend fun recordTakenDose(
         medicationId: Int,
         scheduleId: Int?,
