@@ -218,22 +218,6 @@ class MedicationRepository(
         )
     }
 
-    /*
-     * Records a medication dose as taken.
-     *
-     * The following operations happen inside one database transaction:
-     *
-     * 1. Validate the dose.
-     * 2. Decrease medication inventory.
-     * 3. Register an OUT inventory movement.
-     * 4. Register the dose event.
-     *
-     * If there is not enough inventory, nothing is recorded.
-     *
-     * Returns:
-     *   true  = dose recorded successfully
-     *   false = insufficient inventory or invalid dose
-     */
     suspend fun recordTakenDose(
         medicationId: Int,
         scheduleId: Int?,
@@ -278,19 +262,6 @@ class MedicationRepository(
         true
     }
 
-    /*
-     * Records medication added to inventory.
-     *
-     * The following operations happen inside one database transaction:
-     *
-     * 1. Validate the quantity.
-     * 2. Increase medication inventory.
-     * 3. Register an IN inventory movement with its reason.
-     *
-     * Returns:
-     *   true  = inventory successfully increased
-     *   false = invalid quantity or medication not found
-     */
     suspend fun recordInventoryIn(
         medicationId: Int,
         quantity: Double,
@@ -320,6 +291,54 @@ class MedicationRepository(
                 medicationId = medicationId,
                 type = "IN",
                 quantity = quantity,
+                reason = reason,
+                createdAt = createdAt
+            )
+        )
+
+        true
+    }
+
+    suspend fun recordInventoryAdjustment(
+        medicationId: Int,
+        adjustment: Double,
+        reason: String,
+        createdAt: Long
+    ): Boolean = database.withTransaction {
+
+        if (adjustment == 0.0) {
+            return@withTransaction false
+        }
+
+        if (reason.isBlank()) {
+            return@withTransaction false
+        }
+
+        val changed =
+            if (adjustment > 0.0) {
+
+                medicationDao.increaseMedicationQuantity(
+                    medicationId = medicationId,
+                    dose = adjustment
+                )
+
+            } else {
+
+                medicationDao.decreaseMedicationQuantity(
+                    medicationId = medicationId,
+                    dose = -adjustment
+                )
+            }
+
+        if (changed == 0) {
+            return@withTransaction false
+        }
+
+        medicationInventoryMovementDao.insertMovement(
+            MedicationInventoryMovement(
+                medicationId = medicationId,
+                type = "ADJUSTMENT",
+                quantity = adjustment,
                 reason = reason,
                 createdAt = createdAt
             )
